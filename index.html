@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Java System Engineering & Revision Tracker</title>
+  <title>Java System Engineering Portal</title>
   <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
   <style>
     .branch-path {
@@ -41,7 +41,9 @@
     #side-drawer {
       transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    /* Custom scrollbars */
+    pre code {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
     ::-webkit-scrollbar {
       width: 7px;
       height: 7px;
@@ -60,8 +62,8 @@
 </head>
 <body class="bg-slate-950 text-slate-100 antialiased h-screen flex flex-col overflow-hidden font-sans">
 
-  <!-- Top Toolbar -->
-  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2.5 shrink-0 z-30">
+  <!-- Main Navigation Bar -->
+  <header class="bg-slate-900/95 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2.5 shrink-0 z-30">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
       
       <!-- Brand & Progress Stats -->
@@ -72,8 +74,8 @@
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <h1 class="text-sm font-bold tracking-tight text-white">Java Architecture & Daily Tracker</h1>
-              <span class="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+              <h1 class="text-sm font-bold tracking-tight text-white">Java Architecture & Interview Hub</h1>
+              <span class="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">2026</span>
             </div>
             <!-- Progress Bar -->
             <div class="flex items-center gap-2 mt-0.5">
@@ -85,22 +87,41 @@
           </div>
         </div>
 
-        <!-- Mobile View Switcher -->
-        <div class="flex sm:hidden items-center bg-slate-800 p-0.5 rounded-lg border border-slate-700">
-          <button id="mob-btn-tree" onclick="switchView('tree')" class="px-2.5 py-1 text-[11px] font-semibold rounded-md bg-indigo-600 text-white transition">Map</button>
-          <button id="mob-btn-list" onclick="switchView('list')" class="px-2.5 py-1 text-[11px] font-semibold rounded-md text-slate-400 hover:text-white transition">List</button>
+        <!-- Mobile View Select Dropdown -->
+        <div class="flex sm:hidden">
+          <select id="mob-nav-select" onchange="switchMainTab(this.value)" class="bg-slate-800 border border-slate-700 text-xs text-white rounded-lg px-2 py-1 focus:outline-none">
+            <option value="mindmap">🗺️ Mindmap</option>
+            <option value="tracker">🎯 Daily Tracker</option>
+            <option value="companies">🏢 Company Playbooks</option>
+            <option value="lessons">📚 Study Library</option>
+          </select>
         </div>
       </div>
 
-      <!-- Controls, Filters & Navigation -->
-      <div class="flex flex-wrap sm:flex-nowrap items-center gap-2">
-        
+      <!-- Desktop Tab Switcher -->
+      <nav class="hidden sm:flex items-center bg-slate-950 p-1 rounded-xl border border-slate-800 gap-1 text-xs">
+        <button id="tab-btn-mindmap" onclick="switchMainTab('mindmap')" class="px-3 py-1.5 font-medium rounded-lg bg-indigo-600 text-white transition flex items-center gap-1.5">
+          <span>🗺️</span> Mindmap
+        </button>
+        <button id="tab-btn-tracker" onclick="switchMainTab('tracker')" class="px-3 py-1.5 font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+          <span>🎯</span> Daily Tracker
+        </button>
+        <button id="tab-btn-companies" onclick="switchMainTab('companies')" class="px-3 py-1.5 font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+          <span>🏢</span> Company Playbooks
+        </button>
+        <button id="tab-btn-lessons" onclick="switchMainTab('lessons')" class="px-3 py-1.5 font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5">
+          <span>📚</span> Study Library
+        </button>
+      </nav>
+
+      <!-- Action Utilities -->
+      <div class="flex items-center gap-2">
         <!-- Search Input -->
         <div class="relative flex-1 sm:w-44">
           <input 
             id="search-input" 
             type="text" 
-            placeholder="Search topic..." 
+            placeholder="Search topic or company..." 
             class="bg-slate-950 border border-slate-700/80 text-xs rounded-lg pl-7 pr-3 py-1.5 w-full text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
           />
           <svg class="w-3 h-3 absolute left-2.5 top-2.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -108,65 +129,27 @@
           </svg>
         </div>
 
-        <!-- Filter: Today's Target -->
-        <button id="btn-filter-today" onclick="toggleTodayFilter()" class="text-xs px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700/80 transition flex items-center gap-1.5">
-          <span>🎯</span> Today's Plan (<span id="today-count">0</span>)
+        <button onclick="openHistoryModal()" title="View Revision Activity Log" class="text-xs px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/80 transition flex items-center gap-1">
+          <span>📅</span> Log
         </button>
-
-        <!-- Revision History Modal Button -->
-        <button onclick="openHistoryModal()" class="text-xs px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/80 transition flex items-center gap-1">
-          <span>📅</span> History
-        </button>
-
-        <!-- Desktop View Mode Switcher -->
-        <div class="hidden sm:flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800">
-          <button id="desk-btn-tree" onclick="switchView('tree')" class="px-2.5 py-1 text-xs font-medium rounded-md bg-indigo-600 text-white transition">Mindmap</button>
-          <button id="desk-btn-list" onclick="switchView('list')" class="px-2.5 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-white transition">Cards View</button>
-        </div>
-
-        <!-- Zoom & Pan Controls -->
-        <div class="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs text-slate-300">
-          <button onclick="zoomOut()" title="Zoom Out" class="px-2 py-1 hover:bg-slate-800 rounded text-slate-300 font-bold">−</button>
-          <span id="zoom-text" onclick="zoomReset()" title="Click to Reset Zoom" class="px-2 py-1 font-mono text-[10px] text-slate-400 cursor-pointer hover:text-white">100%</span>
-          <button onclick="zoomIn()" title="Zoom In" class="px-2 py-1 hover:bg-slate-800 rounded text-slate-300 font-bold">+</button>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex items-center gap-1">
-          <button onclick="expandAll()" title="Expand all branches" class="text-xs px-2 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition">
-            Expand All
-          </button>
-          <button onclick="collapseAll()" title="Collapse all branches" class="text-xs px-2 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition">
-            Collapse
-          </button>
-          <button onclick="resetView()" title="Center view" class="text-xs px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700/80 transition font-medium">
-            Center ⊙
-          </button>
-        </div>
-
       </div>
+
     </div>
   </header>
 
-  <!-- Main Content Area -->
+  <!-- Main Dynamic View Container -->
   <main class="flex-1 relative overflow-hidden flex">
 
-    <!-- 1. MIND MAP CANVAS VIEW (Smooth Pan & Unlimited Scroll) -->
-    <div id="tree-container" class="flex-1 w-full h-full overflow-auto bg-slate-950 relative">
-      
-      <!-- Spacious Virtual Canvas Wrapper (prevents any top/left clipping) -->
+    <!-- ========================================== -->
+    <!-- VIEW 1: INTERACTIVE MINDMAP (Smooth Pan/Zoom) -->
+    <!-- ========================================== -->
+    <div id="view-mindmap" class="flex-1 w-full h-full overflow-auto bg-slate-950 relative">
       <div id="canvas-stage" class="relative min-w-[2600px] min-h-[1900px] flex items-center justify-center p-36">
-        
-        <!-- SVG Connecting Curves Layer -->
         <svg id="svg-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
         
-        <!-- Interactive Mind Map Tree Root -->
         <div id="mindmap-root" class="relative z-10 flex items-center justify-center gap-24">
-          
-          <!-- Left Branches Column -->
-          <div class="flex flex-col gap-12 items-end" id="left-column">
-            <!-- Rendered via JS -->
-          </div>
+          <!-- Left Column -->
+          <div class="flex flex-col gap-12 items-end" id="left-column"></div>
 
           <!-- Center Root Hub -->
           <div class="flex flex-col items-center">
@@ -180,70 +163,124 @@
             </div>
           </div>
 
-          <!-- Right Branches Column -->
-          <div class="flex flex-col gap-12 items-start" id="right-column">
-            <!-- Rendered via JS -->
-          </div>
-
+          <!-- Right Column -->
+          <div class="flex flex-col gap-12 items-start" id="right-column"></div>
         </div>
-
       </div>
 
-      <!-- Quick Canvas Guide Tooltip in bottom corner -->
-      <div class="absolute bottom-4 left-4 z-20 hidden sm:flex items-center gap-2 bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[11px] text-slate-400 pointer-events-none">
-        <span>🖱️ Drag to pan</span>
-        <span>•</span>
-        <span>Scroll to move</span>
-        <span>•</span>
-        <span>Click node to open</span>
+      <!-- Mindmap Bottom Floating Toolbar -->
+      <div class="absolute bottom-4 left-4 z-20 flex items-center gap-2 bg-slate-900/90 backdrop-blur border border-slate-800 p-1 rounded-xl shadow-xl">
+        <button onclick="zoomOut()" title="Zoom Out" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">−</button>
+        <span id="zoom-text" onclick="zoomReset()" class="text-[11px] font-mono px-2 text-slate-400 cursor-pointer hover:text-white">100%</span>
+        <button onclick="zoomIn()" title="Zoom In" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">+</button>
+        <span class="text-slate-700">|</span>
+        <button onclick="resetView()" class="px-2.5 py-1 text-xs rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition">Center ⊙</button>
       </div>
-
     </div>
 
-    <!-- 2. MOBILE-FIRST RESPONSIVE CARDS VIEW -->
-    <div id="cards-container" class="hidden flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-8 max-w-4xl mx-auto w-full space-y-6">
-      <div class="text-center pb-2">
-        <h2 class="text-base font-bold text-white">System Architecture & Daily Revision Roadmap</h2>
-        <p class="text-xs text-slate-400">Mobile touch list • Tap any topic to mark revised, set as today's plan, or add personal notes</p>
+    <!-- ========================================== -->
+    <!-- VIEW 2: DAILY REVISION TRACKER (Cards View) -->
+    <!-- ========================================== -->
+    <div id="view-tracker" class="hidden flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-8 max-w-4xl mx-auto w-full space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-3">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <span>🎯</span> Daily Revision & Study Planner
+          </h2>
+          <p class="text-xs text-slate-400">Track your daily target topics, revision count, and personal memory notes</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-filter-today" onclick="toggleTodayFilter()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 transition flex items-center gap-1.5 font-medium">
+            <span>🎯</span> Filter: Today's Plan (<span id="today-count">0</span>)
+          </button>
+        </div>
       </div>
-      <div id="cards-list" class="space-y-4">
+
+      <div id="cards-list" class="space-y-4"></div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 3: COMPANY PLAYBOOKS & ROUNDS -->
+    <!-- ========================================== -->
+    <div id="view-companies" class="hidden flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-8 max-w-5xl mx-auto w-full space-y-6">
+      <div class="text-center pb-2">
+        <h2 class="text-base sm:text-lg font-bold text-white">Target Company Interview Playbooks (2026)</h2>
+        <p class="text-xs text-slate-400">Exact round breakdowns, live questions asked, machine coding challenges & evaluation rubrics</p>
+      </div>
+
+      <!-- Company Tabs Selector -->
+      <div class="flex items-center justify-center flex-wrap gap-2 pb-2">
+        <button onclick="showCompany('mastercard')" id="c-btn-mastercard" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-md transition">
+          Mastercard (Pune)
+        </button>
+        <button onclick="showCompany('zomato')" id="c-btn-zomato" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
+          Zomato / Blinkit (Gurgaon)
+        </button>
+        <button onclick="showCompany('browserstack')" id="c-btn-browserstack" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
+          BrowserStack (Remote)
+        </button>
+        <button onclick="showCompany('barclays')" id="c-btn-barclays" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
+          Barclays & BNY (Pune)
+        </button>
+        <button onclick="showCompany('makemytrip')" id="c-btn-makemytrip" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
+          MakeMyTrip (Gurgaon)
+        </button>
+      </div>
+
+      <!-- Company Playbook Content Container -->
+      <div id="company-detail-card" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 4: STUDY LIBRARY & CODE TEMPLATES -->
+    <!-- ========================================== -->
+    <div id="view-lessons" class="hidden flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-8 max-w-5xl mx-auto w-full space-y-6">
+      <div class="text-center pb-2">
+        <h2 class="text-base sm:text-lg font-bold text-white">Study Library & Machine Coding Templates</h2>
+        <p class="text-xs text-slate-400">Production code templates, interview answers, and architectural patterns ready to review</p>
+      </div>
+
+      <!-- Lesson Category Pills -->
+      <div class="flex items-center justify-center flex-wrap gap-2 pb-2">
+        <button onclick="showLesson('collections')" id="l-btn-collections" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white transition">
+          1. HashMap & Concurrency Internals
+        </button>
+        <button onclick="showLesson('transactional')" id="l-btn-transactional" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
+          2. Spring @Transactional & Proxies
+        </button>
+        <button onclick="showLesson('kafka')" id="l-btn-kafka" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
+          3. Kafka Pipeline (Talenlio Flow)
+        </button>
+        <button onclick="showLesson('mongo')" id="l-btn-mongo" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
+          4. Mongo 100MB $facet Fix
+        </button>
+        <button onclick="showLesson('machinecoding')" id="l-btn-machinecoding" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition">
+          5. Machine Coding: Thread-Safe Cache
+        </button>
+      </div>
+
+      <!-- Lesson Content Body -->
+      <div id="lesson-detail-card" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-6">
         <!-- Rendered via JS -->
       </div>
     </div>
 
   </main>
 
-  <!-- Dark Backdrop Overlay -->
-  <div 
-    id="drawer-backdrop" 
-    onclick="closeDrawer()" 
-    class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden transition-opacity duration-300"
-  ></div>
-
   <!-- FIXED FLOATING SLIDE-OVER DRAWER -->
-  <aside 
-    id="side-drawer" 
-    class="fixed top-0 right-0 bottom-0 w-full sm:w-[460px] max-w-full bg-slate-900 border-l border-slate-800 shadow-2xl z-50 transform translate-x-full flex flex-col justify-between"
-  >
-    <!-- Drawer Header -->
+  <div id="drawer-backdrop" onclick="closeDrawer()" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden transition-opacity duration-300"></div>
+  <aside id="side-drawer" class="fixed top-0 right-0 bottom-0 w-full sm:w-[460px] max-w-full bg-slate-900 border-l border-slate-800 shadow-2xl z-50 transform translate-x-full flex flex-col justify-between">
     <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900/90 backdrop-blur">
       <div class="flex items-center gap-2">
         <span id="drawer-tag" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">TOPIC</span>
         <span id="drawer-stage" class="text-[10px] font-medium text-slate-400">Stage 1</span>
       </div>
-      <button 
-        onclick="closeDrawer()" 
-        class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700/60"
-        aria-label="Close panel"
-      >
-        ✕
-      </button>
+      <button onclick="closeDrawer()" class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700/60">✕</button>
     </div>
 
-    <!-- Drawer Body -->
     <div class="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
-      
-      <!-- Title & Desc -->
       <div>
         <h2 id="drawer-title" class="text-lg font-bold text-white tracking-tight leading-snug">Select a Topic</h2>
         <p id="drawer-subtitle" class="text-xs text-slate-400 mt-1 leading-relaxed"></p>
@@ -252,62 +289,38 @@
       <!-- PERSONAL REVISION TRACKER CARD -->
       <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
         <div class="flex items-center justify-between">
-          <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-            <span>📝</span> Revision Status
-          </span>
+          <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5"><span>📝</span> Revision Status</span>
           <span id="drawer-status-badge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold">Not Started</span>
         </div>
 
-        <!-- Quick Status Buttons -->
         <div class="grid grid-cols-3 gap-1.5 text-xs">
-          <button id="btn-status-todo" onclick="setTopicStatus('todo')" class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-medium transition text-center">
-            To Do
-          </button>
-          <button id="btn-status-today" onclick="setTopicStatus('today')" class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-400 font-medium transition text-center">
-            🎯 Today's Target
-          </button>
-          <button id="btn-status-done" onclick="setTopicStatus('done')" class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-emerald-400 font-medium transition text-center">
-            ✓ Mastered
-          </button>
+          <button id="btn-status-todo" onclick="setTopicStatus('todo')" class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-medium transition text-center">To Do</button>
+          <button id="btn-status-today" onclick="setTopicStatus('today')" class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-400 font-medium transition text-center">🎯 Today</button>
+          <button id="btn-status-done" onclick="setTopicStatus('done')" class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-emerald-400 font-medium transition text-center">✓ Mastered</button>
         </div>
 
-        <!-- Revision History Details -->
         <div class="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-900">
           <span id="drawer-revision-count">Revised: 0 times</span>
-          <button onclick="markRevisedNow()" class="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
-            <span>↺</span> Mark Revised Today
-          </button>
+          <button onclick="markRevisedNow()" class="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1"><span>↺</span> Mark Revised Today</button>
         </div>
         <div id="drawer-last-revised" class="text-[10px] text-slate-500 font-mono">Last revised: Never</div>
 
-        <!-- Personal Notes Box -->
         <div class="pt-2">
-          <label class="block text-[11px] font-semibold text-slate-400 mb-1">My Personal Notes & Triggers:</label>
-          <textarea 
-            id="drawer-personal-notes" 
-            placeholder="Write your quick memory triggers, interview answers, or questions here..."
-            class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 h-20 transition"
-            oninput="savePersonalNotes()"
-          ></textarea>
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">My Personal Notes & Memory Triggers:</label>
+          <textarea id="drawer-personal-notes" placeholder="Write your quick memory triggers, interview answers, or questions..." class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 h-20 transition" oninput="savePersonalNotes()"></textarea>
         </div>
       </div>
 
-      <!-- Technical Points Section -->
-      <div id="drawer-body" class="space-y-4 text-xs text-slate-300 leading-relaxed pt-1">
-        <!-- Injected via JS -->
-      </div>
+      <div id="drawer-body" class="space-y-4 text-xs text-slate-300 leading-relaxed pt-1"></div>
     </div>
 
-    <!-- Drawer Footer -->
     <div class="p-4 border-t border-slate-800 bg-slate-950/60 shrink-0 flex items-center justify-between text-[11px] text-slate-400">
       <span>Auto-saves to browser memory</span>
-      <button onclick="closeDrawer()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition text-xs">
-        Save & Close
-      </button>
+      <button onclick="closeDrawer()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition text-xs">Save & Close</button>
     </div>
   </aside>
 
-  <!-- HISTORY & REVISION LOG MODAL -->
+  <!-- HISTORY MODAL -->
   <div id="history-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
       <div class="p-4 border-b border-slate-800 flex items-center justify-between">
@@ -317,11 +330,7 @@
         </div>
         <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
       </div>
-
-      <div id="history-log-list" class="p-4 overflow-y-auto space-y-2 text-xs flex-1">
-        <!-- Injected via JS -->
-      </div>
-
+      <div id="history-log-list" class="p-4 overflow-y-auto space-y-2 text-xs flex-1"></div>
       <div class="p-3 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between text-[11px]">
         <div class="flex items-center gap-2">
           <button onclick="exportProgress()" class="text-indigo-400 hover:underline">Export Backup (JSON)</button>
@@ -336,14 +345,14 @@
     </div>
   </div>
 
-  <!-- Interactive Mindmap Data & Storage Engine -->
+  <!-- Interactive Data & Navigation Script -->
   <script>
     const ROADMAP_DATA = {
       left: [
         {
           id: 'java-core',
           title: 'Java Core & Evolution',
-          color: '#10B981', // Emerald
+          color: '#10B981',
           icon: '🌿',
           stage: 'Stage 1: Gatekeeper',
           expanded: true,
@@ -351,9 +360,9 @@
             {
               id: 'java-basics',
               title: 'Java Basics & OOPs',
-              desc: 'Polymorphism (Runtime method overriding vs Compile-time overloading), Encapsulation, Abstract Class vs Interface (Java 8 default/static methods).',
+              desc: 'Polymorphism (Runtime method overriding vs Compile-time overloading), Encapsulation, Abstract Class vs Interface.',
               points: [
-                'Interview Trap: Can we override private or static methods? (No, static methods belong to the class, resulting in method hiding, not overriding).',
+                'Interview Trap: Can we override private or static methods? (No, static belongs to class -> method hiding).',
                 'Deep vs Shallow copy in Java object cloning.',
                 'Why multiple inheritance is not supported with classes (Diamond problem).'
               ]
@@ -402,7 +411,7 @@
         {
           id: 'spring-framework',
           title: 'Spring Boot & Microservices',
-          color: '#EF4444', // Red/Coral
+          color: '#EF4444',
           icon: '🔴',
           stage: 'Stage 1: Gatekeeper',
           expanded: true,
@@ -449,7 +458,7 @@
         {
           id: 'standout-weapons',
           title: 'Stage 2: Standout Weapons (Top 5%)',
-          color: '#8B5CF6', // Purple
+          color: '#8B5CF6',
           icon: '⚡',
           stage: 'Stage 2: Offer Winner',
           expanded: true,
@@ -489,7 +498,7 @@
         {
           id: 'fullstack-arch',
           title: 'Stage 3: Full-Stack & System Design',
-          color: '#3B82F6', // Blue
+          color: '#3B82F6',
           icon: '🌐',
           stage: 'Stage 3: Deal Closer',
           expanded: true,
@@ -526,7 +535,7 @@
         {
           id: 'interview-mastery',
           title: 'Interview & Spoken Playbook',
-          color: '#F59E0B', // Amber
+          color: '#F59E0B',
           icon: '🎯',
           stage: 'Communication',
           expanded: true,
@@ -561,19 +570,240 @@
       ]
     };
 
-    // LOCAL STORAGE MANAGER
+    // COMPANY INTELLIGENCE DATA
+    const COMPANY_DATA = {
+      mastercard: {
+        title: "Mastercard (Pune Tech Hub)",
+        tag: "Fintech & GCC Tier",
+        overview: "Known for resilient payment gateways, high security, and strict transaction isolation. Values candidates who understand JVM internals and system reliability.",
+        rounds: [
+          {
+            name: "Round 1: HR Screening (30 mins)",
+            focus: "Experience breakdown, motivation, current/expected compensation (target INR 12-16 LPA), notice period."
+          },
+          {
+            name: "Round 2: Online Assessment / Karat (60 mins)",
+            focus: "2-3 algorithmic problems (Strings, Arrays, Two Pointers, Trees) on HackerRank or Codility."
+          },
+          {
+            name: "Round 3: Technical SME Round (60 mins)",
+            focus: "Deep dive: HashMap internal bucket array & Red-Black Tree threshold (8); Garbage Collection (G1 vs ZGC); Spring Bean lifecycle; @Transactional propagation & rollback rules; JWT security filter chain."
+          },
+          {
+            name: "Round 4: Bar Raiser & Live Debugging (60 mins)",
+            focus: "Debugging buggy Java code (memory leaks, deadlocks, race conditions). MongoDB query optimization (eliminating COLLSCANs, explain plan analysis)."
+          },
+          {
+            name: "Round 5: Hiring Manager & Decency Quotient (45 mins)",
+            focus: "Evaluating Decency Quotient (DQ), past architectural decisions at Talenlio, handling production fires and cross-team collaboration."
+          }
+        ]
+      },
+      zomato: {
+        title: "Zomato & Blinkit (Gurgaon HQ)",
+        tag: "High-Growth Unicorn Tier",
+        overview: "Extreme scale, real-time logistics, microservices handling massive traffic spikes. Tests fast problem-solving, concurrency, and defense of past architecture.",
+        rounds: [
+          {
+            name: "Round 1: Online Assessment (OA)",
+            focus: "Medium/Hard algorithmic challenges (Sliding Window, Heaps, Graphs) + Core CS MCQs."
+          },
+          {
+            name: "Round 2: Live Problem Solving & Concurrency (60 mins)",
+            focus: "Write clean, runnable code with zero bugs. Concurrency questions: ThreadPoolExecutor, producer-consumer pattern, rate limiting."
+          },
+          {
+            name: "Round 3: Low-Level Design & Architecture Defense (60 mins)",
+            focus: "Design a Notification Service or Menu Hierarchy. Defend Talenlio: Why Kafka over RabbitMQ? How you solved the MongoDB 100MB $facet crash. How you prevented Gemini AI rate limits."
+          },
+          {
+            name: "Round 4: Engineering Director / Culture (45 mins)",
+            focus: "High ownership, bias for action, dealing with production outages under high pressure."
+          }
+        ]
+      },
+      browserstack: {
+        title: "BrowserStack (Remote-First / Mumbai)",
+        tag: "Developer Platform & Remote Tier",
+        overview: "High engineering bar. Heavy multithreading, concurrent test runners, and developer platforms. Focuses on Machine Coding and thread safety.",
+        rounds: [
+          {
+            name: "Round 1: Machine Coding / Live Coding (90 mins)",
+            focus: "Build a thread-safe working module from scratch in Java with JUnit tests. Examples: In-Memory Cache with TTL & Eviction; Thread-Safe Publish-Subscribe Queue; Distributed Rate Limiter."
+          },
+          {
+            name: "Round 2: Concurrency & Data Structures (60 mins)",
+            focus: "Deep dive: ConcurrentHashMap internals, ReentrantLock vs synchronized, thread starvation, deadlock avoidance."
+          },
+          {
+            name: "Round 3: Past Systems & Architecture (60 mins)",
+            focus: "End-to-end breakdown of Talenlio: Gmail Tracker event flow (Pub/Sub -> Kafka -> Gemini AI -> Firestore), Kafka partition ordering."
+          },
+          {
+            name: "Round 4: Engineering Director / Autonomy (45 mins)",
+            focus: "Asynchronous communication, production ownership, self-directed engineering."
+          }
+        ]
+      },
+      barclays: {
+        title: "Barclays & BNY Mellon (Pune)",
+        tag: "Banking GCC Tier",
+        overview: "Core banking microservices, ACID transaction compliance, Kafka event processing, and Spring Security.",
+        rounds: [
+          {
+            name: "Round 1: Online Coding Test",
+            focus: "2 DSA questions + Core Java MCQs."
+          },
+          {
+            name: "Round 2: Core Java & Concurrency (60 mins)",
+            focus: "Thread safety, Java Streams API lazy evaluation, CompletableFuture chaining, JVM profiling."
+          },
+          {
+            name: "Round 3: Microservices & Database Design (60 mins)",
+            focus: "API Gateway, circuit breakers (Resilience4j), distributed transactions, MongoDB indexing rules."
+          },
+          {
+            name: "Round 4: Techno-Managerial Round (45 mins)",
+            focus: "System scalability, production war stories, team collaboration."
+          }
+        ]
+      },
+      makemytrip: {
+        title: "MakeMyTrip (Gurgaon)",
+        tag: "High-Traffic Booking Platform",
+        overview: "Distributed booking engines, high-throughput caching architectures, and search optimization.",
+        rounds: [
+          {
+            name: "Round 1: Coding Assessment",
+            focus: "Array manipulation, dynamic programming, strings."
+          },
+          {
+            name: "Round 2: Data Structures & Java Internals (60 mins)",
+            focus: "Java Collections, Multithreading, Spring Boot REST endpoints."
+          },
+          {
+            name: "Round 3: System Architecture & Caching (60 mins)",
+            focus: "Redis Cache-Aside pattern, Kafka event pipelines, database indexing and sharding."
+          },
+          {
+            name: "Round 4: Engineering Manager Round",
+            focus: "Behavioral and leadership evaluation."
+          }
+        ]
+      }
+    };
+
+    // STUDY LESSONS DATA
+    const LESSONS_DATA = {
+      collections: {
+        title: "1. HashMap & ConcurrentHashMap Internals",
+        category: "Java Core (Tested by Mastercard & Zomato)",
+        content: `
+          <div class="space-y-4">
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <h4 class="text-sm font-bold text-amber-400 mb-2">💡 Core Mechanism to State in Interviews:</h4>
+              <p class="text-slate-300 leading-relaxed text-xs">
+                "A <code>HashMap</code> in Java is backed by an array of Nodes/Buckets. The bucket index is calculated using bitwise AND: <code>(n - 1) & hash(key)</code>. When hash collisions occur, entries are stored in a singly linked list. Once bucket entries reach <b>TREEIFY_THRESHOLD = 8</b> (and table capacity >= 64), the linked list converts into a <b>Red-Black Tree</b>, dropping lookup time from O(n) to O(log n)."
+              </p>
+            </div>
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <h4 class="text-sm font-bold text-indigo-400 mb-2">🔒 Why ConcurrentHashMap is Fast:</h4>
+              <p class="text-slate-300 leading-relaxed text-xs">
+                In Java 8+, <code>ConcurrentHashMap</code> avoids whole-table locks. It uses <b>CAS (Compare-And-Swap)</b> for empty bucket insertions and <code>synchronized</code> locks on only the head node of the specific bucket being updated. Reads are completely lock-free via volatile node references.
+              </p>
+            </div>
+          </div>
+        `
+      },
+      transactional: {
+        title: "2. Spring Boot @Transactional & Proxy Mechanisms",
+        category: "Spring Boot (Tested by Mastercard & Barclays)",
+        content: `
+          <div class="space-y-4">
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <h4 class="text-sm font-bold text-red-400 mb-2">⚠️ The 2 Common Traps Interviewers Test:</h4>
+              <ul class="space-y-2 text-xs text-slate-300 leading-relaxed list-disc list-inside">
+                <li><b>Rollback Trap:</b> By default, Spring only rolls back on <b>unchecked exceptions (RuntimeException and Error)</b>. If a checked exception (e.g. <code>IOException</code>) is thrown, the transaction commits! Fix: Always specify <code>@Transactional(rollbackFor = Exception.class)</code>.</li>
+                <li><b>Self-Invocation Trap:</b> Calling a <code>@Transactional</code> method from within the same class (e.g. <code>this.methodB()</code>) bypasses the Spring CGLIB AOP proxy. The transaction silently never starts.</li>
+              </ul>
+            </div>
+          </div>
+        `
+      },
+      kafka: {
+        title: "3. Apache Kafka Pipeline (Talenlio Architecture Flow)",
+        category: "Event Streaming (Tested by Zomato & BrowserStack)",
+        content: `
+          <div class="space-y-4">
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <h4 class="text-sm font-bold text-purple-400 mb-2">🚀 How to Explain Your Production Pipeline:</h4>
+              <p class="text-slate-300 leading-relaxed text-xs">
+                "In our Gmail Tracker at Talenlio, Google sends push webhook notifications to our Spring Boot backend. Instead of executing heavy AI processing synchronously, the controller immediately emits a <code>GmailSyncEventDpo</code> to an Apache Kafka <code>EMAIL_TOPIC</code> and returns 200 OK. Our background consumer group picks up the event, calls the Google Gemini SDK for stage classification, and writes the output into Firestore. This decouples webhook availability from external AI latency."
+              </p>
+            </div>
+          </div>
+        `
+      },
+      mongo: {
+        title: "4. Resolving the 100MB in-memory $facet Crash in MongoDB",
+        category: "Database Tuning (Tested by Zomato & Wingify)",
+        content: `
+          <div class="space-y-4">
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <h4 class="text-sm font-bold text-emerald-400 mb-2">🔥 Production Post-Mortem Story:</h4>
+              <p class="text-slate-300 leading-relaxed text-xs">
+                "In candidate searches on Talenlio, queries crashed with <code>UNHANDLED_ERROR 99999</code>. Root cause: An unbounded <code>$facet</code> aggregation pipeline was combining total document counting and paginated results in a single memory stage, hitting MongoDB's strict 100MB in-memory limit. <b>Fix:</b> We split the pipeline into two parallel indexed queries: one lightweight count query and one targeted paginated slice using indexed sort criteria."
+              </p>
+            </div>
+          </div>
+        `
+      },
+      machinecoding: {
+        title: "5. Machine Coding: Thread-Safe In-Memory Cache with TTL",
+        category: "Machine Coding (Tested by BrowserStack & HackerRank)",
+        content: `
+          <div class="space-y-4">
+            <div class="bg-slate-950 p-4 rounded-xl border border-slate-800">
+              <h4 class="text-sm font-bold text-amber-400 mb-2">💻 Clean Java Implementation Template:</h4>
+              <pre class="bg-slate-900 p-3 rounded-lg text-emerald-300 text-[11px] overflow-x-auto"><code>public class InMemoryCache&lt;K, V&gt; {
+    private final ConcurrentHashMap&lt;K, CacheItem&lt;V&gt;&gt; map = new ConcurrentHashMap&lt;&gt;();
+
+    private record CacheItem&lt;V&gt;(V value, long expiryTime) {
+        boolean isExpired() { return System.currentTimeMillis() > expiryTime; }
+    }
+
+    public void put(K key, V value, long ttlMillis) {
+        map.put(key, new CacheItem&lt;&gt;(value, System.currentTimeMillis() + ttlMillis));
+    }
+
+    public Optional&lt;V&gt; get(K key) {
+        CacheItem&lt;V&gt; item = map.get(key);
+        if (item == null) return Optional.empty();
+        if (item.isExpired()) {
+            map.remove(key);
+            return Optional.empty();
+        }
+        return Optional.of(item.value());
+    }
+}</code></pre>
+            </div>
+          </div>
+        `
+      }
+    };
+
+    // LOCAL STORAGE & TRACKER
     const STORAGE_KEY = 'vaibhav_java_roadmap_progress_v1';
     let userProgress = {};
     let activeTopicId = null;
-    let currentView = 'tree';
+    let currentMainTab = 'mindmap';
     let filterTodayOnly = false;
     let currentZoom = 1;
 
     function loadProgress() {
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) userProgress = JSON.parse(raw);
-        else userProgress = {};
+        userProgress = raw ? JSON.parse(raw) : {};
       } catch (e) {
         userProgress = {};
       }
@@ -591,23 +821,14 @@
 
     function getTopicRecord(id) {
       if (!userProgress[id]) {
-        userProgress[id] = {
-          status: 'todo',
-          revisionCount: 0,
-          history: [],
-          notes: ''
-        };
+        userProgress[id] = { status: 'todo', revisionCount: 0, history: [], notes: '' };
       }
       return userProgress[id];
     }
 
     function updateStats() {
-      let total = 0;
-      let done = 0;
-      let today = 0;
-
-      const allBranches = [...ROADMAP_DATA.left, ...ROADMAP_DATA.right];
-      allBranches.forEach(b => {
+      let total = 0, done = 0, today = 0;
+      [...ROADMAP_DATA.left, ...ROADMAP_DATA.right].forEach(b => {
         if (b.children) {
           b.children.forEach(c => {
             total++;
@@ -630,81 +851,130 @@
       if (todayCount) todayCount.innerText = today;
     }
 
-    // Switch between Tree and Cards view
-    function switchView(mode) {
-      currentView = mode;
-      const treeContainer = document.getElementById('tree-container');
-      const cardsContainer = document.getElementById('cards-container');
+    // MAIN TAB NAVIGATION SWITCHER
+    function switchMainTab(tab) {
+      currentMainTab = tab;
 
-      const allTreeBtns = [document.getElementById('mob-btn-tree'), document.getElementById('desk-btn-tree')];
-      const allListBtns = [document.getElementById('mob-btn-list'), document.getElementById('desk-btn-list')];
+      // Hide all views
+      ['mindmap', 'tracker', 'companies', 'lessons'].forEach(t => {
+        const el = document.getElementById(`view-${t}`);
+        if (el) el.classList.add('hidden');
 
-      if (mode === 'tree') {
-        treeContainer.classList.remove('hidden');
-        cardsContainer.classList.add('hidden');
+        const btn = document.getElementById(`tab-btn-${t}`);
+        if (btn) {
+          btn.className = "px-3 py-1.5 font-medium rounded-lg text-slate-400 hover:text-white transition flex items-center gap-1.5";
+        }
+      });
 
-        allTreeBtns.forEach(b => { if(b) { b.classList.add('bg-indigo-600', 'text-white'); b.classList.remove('text-slate-400'); } });
-        allListBtns.forEach(b => { if(b) { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('text-slate-400'); } });
+      // Show selected view
+      const activeEl = document.getElementById(`view-${tab}`);
+      if (activeEl) activeEl.classList.remove('hidden');
 
+      const activeBtn = document.getElementById(`tab-btn-${tab}`);
+      if (activeBtn) {
+        activeBtn.className = "px-3 py-1.5 font-medium rounded-lg bg-indigo-600 text-white transition flex items-center gap-1.5 shadow-md";
+      }
+
+      const mobSelect = document.getElementById('mob-nav-select');
+      if (mobSelect) mobSelect.value = tab;
+
+      if (tab === 'mindmap') {
         requestAnimationFrame(() => {
           renderTree();
           resetView();
         });
-      } else {
-        treeContainer.classList.add('hidden');
-        cardsContainer.classList.remove('hidden');
-
-        allListBtns.forEach(b => { if(b) { b.classList.add('bg-indigo-600', 'text-white'); b.classList.remove('text-slate-400'); } });
-        allTreeBtns.forEach(b => { if(b) { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('text-slate-400'); } });
-
+      } else if (tab === 'tracker') {
         renderCards();
+      } else if (tab === 'companies') {
+        showCompany('mastercard');
+      } else if (tab === 'lessons') {
+        showLesson('collections');
       }
     }
 
-    if (window.innerWidth < 768) {
-      currentView = 'list';
+    // COMPANY VIEW ENGINE
+    function showCompany(key) {
+      const c = COMPANY_DATA[key];
+      if (!c) return;
+
+      // Update button states
+      ['mastercard', 'zomato', 'browserstack', 'barclays', 'makemytrip'].forEach(k => {
+        const btn = document.getElementById(`c-btn-${k}`);
+        if (btn) {
+          btn.className = k === key
+            ? "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-md transition"
+            : "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition";
+        }
+      });
+
+      const card = document.getElementById('company-detail-card');
+      card.innerHTML = `
+        <div class="border-b border-slate-800 pb-4">
+          <div class="flex items-center gap-2">
+            <h3 class="text-base sm:text-lg font-bold text-white">${c.title}</h3>
+            <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">${c.tag}</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">${c.overview}</p>
+        </div>
+
+        <div class="space-y-3">
+          <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400">Exact Hiring Loop & Rounds:</h4>
+          <div class="space-y-3">
+            ${c.rounds.map((r, i) => `
+              <div class="bg-slate-950 p-4 rounded-xl border border-slate-800/80 flex items-start gap-3">
+                <span class="w-6 h-6 rounded-full bg-slate-800 text-indigo-400 font-bold text-xs flex items-center justify-center shrink-0 mt-0.5">${i+1}</span>
+                <div>
+                  <h5 class="text-xs font-bold text-slate-200">${r.name}</h5>
+                  <p class="text-xs text-slate-400 mt-1 leading-relaxed">${r.focus}</p>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `;
     }
 
-    // Filter by Today's Target
-    function toggleTodayFilter() {
-      filterTodayOnly = !filterTodayOnly;
-      const btn = document.getElementById('btn-filter-today');
-      if (filterTodayOnly) {
-        btn.classList.add('bg-amber-500/20', 'border-amber-500/50', 'text-amber-300');
-        btn.classList.remove('bg-slate-800');
-      } else {
-        btn.classList.remove('bg-amber-500/20', 'border-amber-500/50');
-        btn.classList.add('bg-slate-800');
-      }
+    // LESSONS VIEW ENGINE
+    function showLesson(key) {
+      const l = LESSONS_DATA[key];
+      if (!l) return;
 
-      if (currentView === 'tree') renderTree();
-      else renderCards();
+      ['collections', 'transactional', 'kafka', 'mongo', 'machinecoding'].forEach(k => {
+        const btn = document.getElementById(`l-btn-${k}`);
+        if (btn) {
+          btn.className = k === key
+            ? "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-indigo-600 text-white shadow-md transition"
+            : "px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:text-white transition";
+        }
+      });
+
+      const card = document.getElementById('lesson-detail-card');
+      card.innerHTML = `
+        <div class="border-b border-slate-800 pb-3">
+          <span class="text-[10px] font-mono text-indigo-400 uppercase tracking-wider">${l.category}</span>
+          <h3 class="text-base font-bold text-white mt-0.5">${l.title}</h3>
+        </div>
+        <div>${l.content}</div>
+      `;
     }
 
-    // Render Tree View
+    // MINDMAP TREE ENGINE
     function renderTree() {
       const leftCol = document.getElementById('left-column');
       const rightCol = document.getElementById('right-column');
       leftCol.innerHTML = '';
       rightCol.innerHTML = '';
 
-      ROADMAP_DATA.left.forEach(branch => {
-        leftCol.appendChild(createBranchElement(branch, 'left'));
-      });
-
-      ROADMAP_DATA.right.forEach(branch => {
-        rightCol.appendChild(createBranchElement(branch, 'right'));
-      });
-
+      ROADMAP_DATA.left.forEach(b => leftCol.appendChild(createBranchElement(b, 'left')));
+      ROADMAP_DATA.right.forEach(b => rightCol.appendChild(createBranchElement(b, 'right')));
       requestAnimationFrame(drawCurves);
     }
 
     function createBranchElement(branch, side) {
-      const branchContainer = document.createElement('div');
-      branchContainer.className = `flex flex-col ${side === 'left' ? 'items-end' : 'items-start'} gap-3`;
-      branchContainer.id = `branch-${branch.id}`;
+      const container = document.createElement('div');
+      container.className = `flex flex-col ${side === 'left' ? 'items-end' : 'items-start'} gap-3`;
+      container.id = `branch-${branch.id}`;
 
-      // Parent Node
       const parentPill = document.createElement('div');
       parentPill.className = `node-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border shadow-lg`;
       parentPill.style.backgroundColor = `${branch.color}15`;
@@ -726,31 +996,23 @@
         branch.expanded = !branch.expanded;
         renderTree();
       };
+      container.appendChild(parentPill);
 
-      branchContainer.appendChild(parentPill);
-
-      // Children list
       if (branch.expanded && branch.children && branch.children.length > 0) {
         const childrenContainer = document.createElement('div');
         childrenContainer.className = `flex flex-col gap-2.5 ${side === 'left' ? 'items-end pr-3' : 'items-start pl-3'} transition-all`;
 
         branch.children.forEach(child => {
           const rec = getTopicRecord(child.id);
-
-          if (filterTodayOnly && rec.status !== 'today') {
-            return;
-          }
+          if (filterTodayOnly && rec.status !== 'today') return;
 
           const childPill = document.createElement('div');
           childPill.className = `node-pill flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/70 text-slate-200 shadow-sm`;
           childPill.id = `child-${child.id}`;
 
           let statusBadge = `<span class="w-1.5 h-1.5 rounded-full" style="background-color: ${branch.color}"></span>`;
-          if (rec.status === 'done') {
-            statusBadge = `<span class="text-[10px] text-emerald-400 font-bold">✓</span>`;
-          } else if (rec.status === 'today') {
-            statusBadge = `<span class="text-[10px] text-amber-400 animate-pulse">🎯</span>`;
-          }
+          if (rec.status === 'done') statusBadge = `<span class="text-[10px] text-emerald-400 font-bold">✓</span>`;
+          else if (rec.status === 'today') statusBadge = `<span class="text-[10px] text-amber-400 animate-pulse">🎯</span>`;
 
           childPill.innerHTML = `
             ${statusBadge}
@@ -761,24 +1023,18 @@
             e.stopPropagation();
             openDrawer(child, branch);
           };
-
           childrenContainer.appendChild(childPill);
         });
-
-        branchContainer.appendChild(childrenContainer);
+        container.appendChild(childrenContainer);
       }
-
-      return branchContainer;
+      return container;
     }
 
-    // Render Cards View (Mobile responsive)
     function renderCards() {
       const container = document.getElementById('cards-list');
       container.innerHTML = '';
 
-      const allBranches = [...ROADMAP_DATA.left, ...ROADMAP_DATA.right];
-
-      allBranches.forEach(branch => {
+      [...ROADMAP_DATA.left, ...ROADMAP_DATA.right].forEach(branch => {
         const card = document.createElement('div');
         card.className = "bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg";
 
@@ -834,24 +1090,21 @@
             </div>
           `;
         }
-
         card.innerHTML = cardHeader + childrenHtml;
         container.appendChild(card);
       });
     }
 
     function toggleCard(branchId) {
-      const allBranches = [...ROADMAP_DATA.left, ...ROADMAP_DATA.right];
-      const target = allBranches.find(b => b.id === branchId);
+      const target = [...ROADMAP_DATA.left, ...ROADMAP_DATA.right].find(b => b.id === branchId);
       if (target) {
         target.expanded = !target.expanded;
         renderCards();
       }
     }
 
-    // Draw Smooth Coggle-like Curves on Canvas Stage
     function drawCurves() {
-      if (currentView !== 'tree') return;
+      if (currentMainTab !== 'mindmap') return;
 
       const svg = document.getElementById('svg-layer');
       const stage = document.getElementById('canvas-stage');
@@ -865,7 +1118,6 @@
       svg.setAttribute('width', stage.offsetWidth);
       svg.setAttribute('height', stage.offsetHeight);
 
-      // Coordinates relative to stage element
       const hubCenterX = (hubRect.left - stageRect.left) + (hubRect.width / 2);
       const hubCenterY = (hubRect.top - stageRect.top) + (hubRect.height / 2);
 
@@ -874,7 +1126,6 @@
         if (!branchEl) return;
         const pill = branchEl.firstElementChild;
         const pillRect = pill.getBoundingClientRect();
-        
         const pillRightX = (pillRect.right - stageRect.left);
         const pillCenterY = (pillRect.top - stageRect.top) + (pillRect.height / 2);
 
@@ -887,7 +1138,6 @@
             const childRect = childEl.getBoundingClientRect();
             const childRightX = (childRect.right - stageRect.left);
             const childCenterY = (childRect.top - stageRect.top) + (childRect.height / 2);
-
             drawBezier(pillRect.left - stageRect.left + 10, pillCenterY, childRightX, childCenterY, `${branch.color}70`, 1.5);
           });
         }
@@ -898,7 +1148,6 @@
         if (!branchEl) return;
         const pill = branchEl.firstElementChild;
         const pillRect = pill.getBoundingClientRect();
-        
         const pillLeftX = (pillRect.left - stageRect.left);
         const pillCenterY = (pillRect.top - stageRect.top) + (pillRect.height / 2);
 
@@ -911,7 +1160,6 @@
             const childRect = childEl.getBoundingClientRect();
             const childLeftX = (childRect.left - stageRect.left);
             const childCenterY = (childRect.top - stageRect.top) + (childRect.height / 2);
-
             drawBezier(pillRect.right - stageRect.left - 10, pillCenterY, childLeftX, childCenterY, `${branch.color}70`, 1.5);
           });
         }
@@ -939,12 +1187,10 @@
       document.getElementById('zoom-text').innerText = `${Math.round(currentZoom * 100)}%`;
       requestAnimationFrame(drawCurves);
     }
-
     function zoomIn() { setZoom(currentZoom + 0.15); }
     function zoomOut() { setZoom(currentZoom - 0.15); }
     function zoomReset() { setZoom(1); resetView(); }
 
-    // Centering View on Center Hub
     function resetView() {
       expandAll();
       const container = document.getElementById('tree-container');
@@ -958,14 +1204,12 @@
       requestAnimationFrame(drawCurves);
     }
 
-    // Interactive Drag to Pan (Mouse & Touch)
     function initDragToPan() {
       const container = document.getElementById('tree-container');
       let isDown = false;
       let startX, startY, scrollLeft, scrollTop;
 
       container.addEventListener('mousedown', (e) => {
-        // Prevent pan if clicking interactive pills, buttons or inputs
         if (e.target.closest('.node-pill') || e.target.closest('button') || e.target.closest('input')) return;
         isDown = true;
         container.classList.add('is-dragging');
@@ -989,13 +1233,11 @@
         container.classList.remove('is-dragging');
       });
 
-      // Touch drag for mobile
-      let touchStartX, touchStartY;
       container.addEventListener('touchstart', (e) => {
         if (e.target.closest('.node-pill')) return;
         const touch = e.touches[0];
-        touchStartX = touch.pageX - container.offsetLeft;
-        touchStartY = touch.pageY - container.offsetTop;
+        startX = touch.pageX - container.offsetLeft;
+        startY = touch.pageY - container.offsetTop;
         scrollLeft = container.scrollLeft;
         scrollTop = container.scrollTop;
       }, { passive: true });
@@ -1005,12 +1247,12 @@
         const touch = e.touches[0];
         const x = touch.pageX - container.offsetLeft;
         const y = touch.pageY - container.offsetTop;
-        container.scrollLeft = scrollLeft - (x - touchStartX);
-        container.scrollTop = scrollTop - (y - touchStartY);
+        container.scrollLeft = scrollLeft - (x - startX);
+        container.scrollTop = scrollTop - (y - startY);
       }, { passive: true });
     }
 
-    // DRAWER & REVISION CONTROLS
+    // DRAWER LOGIC
     function openDrawer(item, parentBranch) {
       activeTopicId = item.id;
       const drawer = document.getElementById('side-drawer');
@@ -1043,10 +1285,6 @@
               </li>
             `).join('')}
           </ul>
-        </div>
-
-        <div class="bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/60 text-slate-400 text-[11px] leading-relaxed">
-          <span class="font-semibold text-slate-200">How to frame in interviews:</span> Explain this as an architectural choice or production debugging scenario you worked on at Talenlio.
         </div>
       `;
 
@@ -1081,13 +1319,9 @@
       }
 
       revCount.innerText = `Revised: ${rec.revisionCount || 0} times`;
-
-      if (rec.history && rec.history.length > 0) {
-        const lastEntry = rec.history[rec.history.length - 1];
-        lastRev.innerText = `Last revised: ${lastEntry}`;
-      } else {
-        lastRev.innerText = 'Last revised: Never';
-      }
+      lastRev.innerText = (rec.history && rec.history.length > 0)
+        ? `Last revised: ${rec.history[rec.history.length - 1]}`
+        : 'Last revised: Never';
     }
 
     function setTopicStatus(status) {
@@ -1104,8 +1338,7 @@
 
       saveProgress();
       updateDrawerStatusUI(rec);
-
-      if (currentView === 'tree') renderTree();
+      if (currentMainTab === 'mindmap') renderTree();
       else renderCards();
     }
 
@@ -1120,47 +1353,48 @@
 
       saveProgress();
       updateDrawerStatusUI(rec);
-
-      if (currentView === 'tree') renderTree();
+      if (currentMainTab === 'mindmap') renderTree();
       else renderCards();
     }
 
     function savePersonalNotes() {
       if (!activeTopicId) return;
-      const text = document.getElementById('drawer-personal-notes').value;
-      const rec = getTopicRecord(activeTopicId);
-      rec.notes = text;
+      getTopicRecord(activeTopicId).notes = document.getElementById('drawer-personal-notes').value;
       saveProgress();
     }
 
     function closeDrawer() {
-      const drawer = document.getElementById('side-drawer');
-      const backdrop = document.getElementById('drawer-backdrop');
-      drawer.classList.add('translate-x-full');
-      backdrop.classList.add('hidden');
+      document.getElementById('side-drawer').classList.add('translate-x-full');
+      document.getElementById('drawer-backdrop').classList.add('hidden');
     }
 
-    // Revision History Modal
+    function toggleTodayFilter() {
+      filterTodayOnly = !filterTodayOnly;
+      const btn = document.getElementById('btn-filter-today');
+      if (filterTodayOnly) {
+        btn.classList.add('bg-amber-500/20', 'border-amber-500/50', 'text-amber-300');
+        btn.classList.remove('bg-slate-800');
+      } else {
+        btn.classList.remove('bg-amber-500/20', 'border-amber-500/50');
+        btn.classList.add('bg-slate-800');
+      }
+      if (currentMainTab === 'mindmap') renderTree();
+      else renderCards();
+    }
+
     function openHistoryModal() {
       const modal = document.getElementById('history-modal');
       const list = document.getElementById('history-log-list');
       list.innerHTML = '';
 
       const logs = [];
-      const allBranches = [...ROADMAP_DATA.left, ...ROADMAP_DATA.right];
-      allBranches.forEach(b => {
+      [...ROADMAP_DATA.left, ...ROADMAP_DATA.right].forEach(b => {
         if (b.children) {
           b.children.forEach(c => {
             const rec = userProgress[c.id];
             if (rec && rec.history && rec.history.length > 0) {
               rec.history.forEach(dateStr => {
-                logs.push({
-                  title: c.title,
-                  branch: b.title,
-                  date: dateStr,
-                  count: rec.revisionCount,
-                  notes: rec.notes
-                });
+                logs.push({ title: c.title, branch: b.title, date: dateStr, notes: rec.notes });
               });
             }
           });
@@ -1168,13 +1402,7 @@
       });
 
       if (logs.length === 0) {
-        list.innerHTML = `
-          <div class="text-center py-8 text-slate-500">
-            <div class="text-2xl mb-2">📖</div>
-            <p>No revisions recorded yet.</p>
-            <p class="text-[11px] mt-1 text-slate-600">Click any topic and tap "Mark Revised Today" to build your study history.</p>
-          </div>
-        `;
+        list.innerHTML = `<div class="text-center py-8 text-slate-500"><div class="text-2xl mb-2">📖</div><p>No revisions recorded yet.</p></div>`;
       } else {
         logs.reverse().forEach(log => {
           const item = document.createElement('div');
@@ -1193,7 +1421,6 @@
           list.appendChild(item);
         });
       }
-
       modal.classList.remove('hidden');
     }
 
@@ -1201,7 +1428,6 @@
       document.getElementById('history-modal').classList.add('hidden');
     }
 
-    // Export & Import Progress
     function exportProgress() {
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(userProgress, null, 2));
       const downloadAnchor = document.createElement('a');
@@ -1222,82 +1448,37 @@
           saveProgress();
           alert('Progress imported successfully!');
           closeHistoryModal();
-          if (currentView === 'tree') renderTree();
+          if (currentMainTab === 'mindmap') renderTree();
           else renderCards();
         } catch (err) {
-          alert('Invalid JSON file format.');
+          alert('Invalid JSON file.');
         }
       };
       reader.readAsText(file);
     }
 
-    // Toolbar actions
     function expandAll() {
       ROADMAP_DATA.left.forEach(b => b.expanded = true);
       ROADMAP_DATA.right.forEach(b => b.expanded = true);
-      if (currentView === 'tree') renderTree();
+      if (currentMainTab === 'mindmap') renderTree();
       else renderCards();
     }
 
     function collapseAll() {
       ROADMAP_DATA.left.forEach(b => b.expanded = false);
       ROADMAP_DATA.right.forEach(b => b.expanded = false);
-      if (currentView === 'tree') renderTree();
+      if (currentMainTab === 'mindmap') renderTree();
       else renderCards();
     }
 
-    // Search filter
-    document.getElementById('search-input').addEventListener('input', (e) => {
-      const q = e.target.value.toLowerCase().trim();
-      if (!q) {
-        if (currentView === 'tree') renderTree();
-        else renderCards();
-        return;
-      }
-
-      ROADMAP_DATA.left.forEach(b => {
-        const matchesParent = b.title.toLowerCase().includes(q);
-        const matchesChild = b.children && b.children.some(c => c.title.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q));
-        if (matchesParent || matchesChild) b.expanded = true;
-      });
-
-      ROADMAP_DATA.right.forEach(b => {
-        const matchesParent = b.title.toLowerCase().includes(q);
-        const matchesChild = b.children && b.children.some(c => c.title.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q));
-        if (matchesParent || matchesChild) b.expanded = true;
-      });
-
-      if (currentView === 'tree') {
-        renderTree();
-        setTimeout(() => {
-          document.querySelectorAll('.node-pill').forEach(pill => {
-            if (pill.innerText.toLowerCase().includes(q)) {
-              pill.classList.add('ring-2', 'ring-amber-400', 'scale-105');
-            } else {
-              pill.classList.remove('ring-2', 'ring-amber-400', 'scale-105');
-            }
-          });
-        }, 50);
-      } else {
-        renderCards();
-      }
-    });
-
     window.addEventListener('resize', () => {
-      if (currentView === 'tree') {
-        requestAnimationFrame(drawCurves);
-      }
+      if (currentMainTab === 'mindmap') requestAnimationFrame(drawCurves);
     });
 
     window.onload = () => {
       loadProgress();
       initDragToPan();
-      if (window.innerWidth < 768) {
-        switchView('list');
-      } else {
-        switchView('tree');
-        setTimeout(resetView, 100);
-      }
+      switchMainTab('mindmap');
     };
   </script>
 </body>
