@@ -1,0 +1,5 @@
+.DS_Store
+local_token.md
+*.token
+*.pyc
+__pycache__/

@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Java System Engineering & Revision Tracker</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    .branch-path {
+      fill: none;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.3s ease, stroke 0.2s ease, stroke-width 0.2s ease;
+    }
+    .node-pill {
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+      user-select: none;
+    }
+    .node-pill:hover {
+      transform: translateY(-1px) scale(1.02);
+      filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.3));
+    }
+    .badge-count {
+      font-size: 10px;
+      padding: 1px 5px;
+      border-radius: 9999px;
+    }
+    #tree-container {
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+    }
+    #side-drawer {
+      transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #090d16;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e293b;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #334155;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 antialiased h-screen flex flex-col overflow-hidden font-sans">
+
+  <!-- Top Toolbar -->
+  <header class="bg-slate-900/90 backdrop-blur border-b border-slate-800 px-4 sm:px-6 py-2.5 shrink-0 z-30">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      
+      <!-- Brand & Progress Stats -->
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-400 flex items-center justify-center font-bold text-slate-950 shadow-md shadow-orange-500/20 text-sm">
+            ☕
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-sm font-bold tracking-tight text-white">Java Architecture & Daily Tracker</h1>
+              <span class="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Active</span>
+            </div>
+            <!-- Progress Bar -->
+            <div class="flex items-center gap-2 mt-0.5">
+              <div class="w-24 sm:w-36 bg-slate-800 h-1.5 rounded-full overflow-hidden border border-slate-700/50">
+                <div id="top-progress-bar" class="bg-emerald-500 h-full w-0 transition-all duration-500"></div>
+              </div>
+              <span id="top-progress-text" class="text-[10px] text-slate-400 font-mono font-medium">0/19 Revised</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile View Switcher -->
+        <div class="flex sm:hidden items-center bg-slate-800 p-0.5 rounded-lg border border-slate-700">
+          <button id="mob-btn-tree" onclick="switchView('tree')" class="px-2.5 py-1 text-[11px] font-semibold rounded-md bg-indigo-600 text-white transition">Map</button>
+          <button id="mob-btn-list" onclick="switchView('list')" class="px-2.5 py-1 text-[11px] font-semibold rounded-md text-slate-400 hover:text-white transition">List</button>
+        </div>
+      </div>
+
+      <!-- Controls, Filters & History -->
+      <div class="flex flex-wrap sm:flex-nowrap items-center gap-2">
+        
+        <!-- Search Input -->
+        <div class="relative flex-1 sm:w-48">
+          <input 
+            id="search-input" 
+            type="text" 
+            placeholder="Search topic..." 
+            class="bg-slate-950 border border-slate-700/80 text-xs rounded-lg pl-7 pr-3 py-1.5 w-full text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+          />
+          <svg class="w-3 h-3 absolute left-2.5 top-2.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+          </svg>
+        </div>
+
+        <!-- Filter: Today's Target -->
+        <button id="btn-filter-today" onclick="toggleTodayFilter()" class="text-xs px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700/80 transition flex items-center gap-1.5">
+          <span>🎯</span> Today's Plan (<span id="today-count">0</span>)
+        </button>
+
+        <!-- Revision History Modal Button -->
+        <button onclick="openHistoryModal()" class="text-xs px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/80 transition flex items-center gap-1">
+          <span>📅</span> History
+        </button>
+
+        <!-- Desktop View Mode Switcher -->
+        <div class="hidden sm:flex items-center bg-slate-950 p-0.5 rounded-lg border border-slate-800">
+          <button id="desk-btn-tree" onclick="switchView('tree')" class="px-2.5 py-1 text-xs font-medium rounded-md bg-indigo-600 text-white transition">Mindmap</button>
+          <button id="desk-btn-list" onclick="switchView('list')" class="px-2.5 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-white transition">Cards View</button>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-1">
+          <button onclick="expandAll()" title="Expand all branches" class="text-xs px-2 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition">
+            +
+          </button>
+          <button onclick="collapseAll()" title="Collapse all branches" class="text-xs px-2 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition">
+            -
+          </button>
+          <button onclick="resetView()" title="Center view" class="text-xs px-2 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700/80 transition">
+            ⊙
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="flex-1 relative overflow-hidden flex">
+
+    <!-- 1. MIND MAP CANVAS VIEW -->
+    <div id="tree-container" class="flex-1 overflow-auto bg-slate-950 p-8 sm:p-16 relative flex items-center justify-center min-w-[1300px] min-h-[850px]">
+      <svg id="svg-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
+      
+      <!-- Interactive Mind Map Root Layout -->
+      <div id="mindmap-root" class="relative z-10 flex items-center justify-center gap-20">
+        
+        <!-- Left Branches Column -->
+        <div class="flex flex-col gap-10 items-end" id="left-column">
+          <!-- Rendered via JS -->
+        </div>
+
+        <!-- Center Root Hub -->
+        <div class="flex flex-col items-center">
+          <div id="center-hub" class="node-pill bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 border-2 border-indigo-400/40 text-white p-5 rounded-2xl shadow-2xl shadow-indigo-500/30 text-center w-60">
+            <div class="text-2xl mb-1">🚀</div>
+            <div class="font-extrabold text-base tracking-tight text-white">JAVA FULL-STACK</div>
+            <div class="text-[11px] font-medium text-indigo-200">System Engineering</div>
+            <div class="mt-2 text-[10px] text-slate-400 bg-slate-900/70 px-2 py-0.5 rounded-full inline-block border border-slate-700/60">
+              Vaibhav Bhadane • 1+ YOE
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Branches Column -->
+        <div class="flex flex-col gap-10 items-start" id="right-column">
+          <!-- Rendered via JS -->
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 2. MOBILE-FIRST RESPONSIVE CARDS VIEW -->
+    <div id="cards-container" class="hidden flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-8 max-w-4xl mx-auto w-full space-y-6">
+      <div class="text-center pb-2">
+        <h2 class="text-base font-bold text-white">System Architecture & Daily Revision Roadmap</h2>
+        <p class="text-xs text-slate-400">Tap any topic to mark as revised, set as today's plan, or add personal notes</p>
+      </div>
+      <div id="cards-list" class="space-y-4">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Dark Backdrop Overlay -->
+  <div 
+    id="drawer-backdrop" 
+    onclick="closeDrawer()" 
+    class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-40 hidden transition-opacity duration-300"
+  ></div>
+
+  <!-- FIXED FLOATING SLIDE-OVER DRAWER -->
+  <aside 
+    id="side-drawer" 
+    class="fixed top-0 right-0 bottom-0 w-full sm:w-[460px] max-w-full bg-slate-900 border-l border-slate-800 shadow-2xl z-50 transform translate-x-full flex flex-col justify-between"
+  >
+    <!-- Drawer Header -->
+    <div class="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between shrink-0 bg-slate-900/90 backdrop-blur">
+      <div class="flex items-center gap-2">
+        <span id="drawer-tag" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">TOPIC</span>
+        <span id="drawer-stage" class="text-[10px] font-medium text-slate-400">Stage 1</span>
+      </div>
+      <button 
+        onclick="closeDrawer()" 
+        class="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition border border-slate-700/60"
+        aria-label="Close panel"
+      >
+        ✕
+      </button>
+    </div>
+
+    <!-- Drawer Body -->
+    <div class="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+      
+      <!-- Title & Desc -->
+      <div>
+        <h2 id="drawer-title" class="text-lg font-bold text-white tracking-tight leading-snug">Select a Topic</h2>
+        <p id="drawer-subtitle" class="text-xs text-slate-400 mt-1 leading-relaxed"></p>
+      </div>
+
+      <!-- PERSONAL REVISION TRACKER CARD -->
+      <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 space-y-3">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+            <span>📝</span> Revision Status
+          </span>
+          <span id="drawer-status-badge" class="text-[10px] px-2 py-0.5 rounded-full font-semibold">Not Started</span>
+        </div>
+
+        <!-- Quick Status Buttons -->
+        <div class="grid grid-cols-3 gap-1.5 text-xs">
+          <button id="btn-status-todo" onclick="setTopicStatus('todo')" class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-medium transition text-center">
+            To Do
+          </button>
+          <button id="btn-status-today" onclick="setTopicStatus('today')" class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-400 font-medium transition text-center">
+            🎯 Today's Target
+          </button>
+          <button id="btn-status-done" onclick="setTopicStatus('done')" class="py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-emerald-400 font-medium transition text-center">
+            ✓ Mastered
+          </button>
+        </div>
+
+        <!-- Revision History Details -->
+        <div class="flex items-center justify-between text-[11px] text-slate-400 pt-2 border-t border-slate-900">
+          <span id="drawer-revision-count">Revised: 0 times</span>
+          <button onclick="markRevisedNow()" class="text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+            <span>↺</span> Mark Revised Today
+          </button>
+        </div>
+        <div id="drawer-last-revised" class="text-[10px] text-slate-500 font-mono">Last revised: Never</div>
+
+        <!-- Personal Notes Box -->
+        <div class="pt-2">
+          <label class="block text-[11px] font-semibold text-slate-400 mb-1">My Personal Notes & Triggers:</label>
+          <textarea 
+            id="drawer-personal-notes" 
+            placeholder="Write your quick memory triggers, interview answers, or questions here..."
+            class="w-full bg-slate-900 border border-slate-800 rounded-lg p-2.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 h-20 transition"
+            oninput="savePersonalNotes()"
+          ></textarea>
+        </div>
+      </div>
+
+      <!-- Technical Points Section -->
+      <div id="drawer-body" class="space-y-4 text-xs text-slate-300 leading-relaxed pt-1">
+        <!-- Injected via JS -->
+      </div>
+    </div>
+
+    <!-- Drawer Footer -->
+    <div class="p-4 border-t border-slate-800 bg-slate-950/60 shrink-0 flex items-center justify-between text-[11px] text-slate-400">
+      <span>Auto-saves to browser memory</span>
+      <button onclick="closeDrawer()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition text-xs">
+        Save & Close
+      </button>
+    </div>
+  </aside>
+
+  <!-- HISTORY & REVISION LOG MODAL -->
+  <div id="history-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-base">📅</span>
+          <h3 class="text-sm font-bold text-white">Revision History & Activity Log</h3>
+        </div>
+        <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
+      </div>
+
+      <!-- Modal Body -->
+      <div id="history-log-list" class="p-4 overflow-y-auto space-y-2 text-xs flex-1">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Modal Footer (Backup & Export) -->
+      <div class="p-3 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between text-[11px]">
+        <div class="flex items-center gap-2">
+          <button onclick="exportProgress()" class="text-indigo-400 hover:underline">Export Backup (JSON)</button>
+          <span class="text-slate-600">•</span>
+          <label class="text-indigo-400 hover:underline cursor-pointer">
+            Import
+            <input type="file" onchange="importProgress(event)" class="hidden" accept=".json">
+          </label>
+        </div>
+        <button onclick="closeHistoryModal()" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-white">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Mindmap Data & Storage Engine -->
+  <script>
+    const ROADMAP_DATA = {
+      left: [
+        {
+          id: 'java-core',
+          title: 'Java Core & Evolution',
+          color: '#10B981', // Emerald
+          icon: '🌿',
+          stage: 'Stage 1: Gatekeeper',
+          expanded: true,
+          children: [
+            {
+              id: 'java-basics',
+              title: 'Java Basics & OOPs',
+              desc: 'Polymorphism (Runtime method overriding vs Compile-time overloading), Encapsulation, Abstract Class vs Interface (Java 8 default/static methods).',
+              points: [
+                'Interview Trap: Can we override private or static methods? (No, static methods belong to the class, resulting in method hiding, not overriding).',
+                'Deep vs Shallow copy in Java object cloning.',
+                'Why multiple inheritance is not supported with classes (Diamond problem).'
+              ]
+            },
+            {
+              id: 'java-collections',
+              title: 'Collections Internals',
+              desc: 'HashMap, ConcurrentHashMap, ArrayList, LinkedList, Set.',
+              points: [
+                'HashMap Internal Architecture: Array of Nodes, index (n-1)&hash. Bucket threshold 8 triggers Red-Black Tree (O(log n)).',
+                'ConcurrentHashMap uses CAS (Compare-And-Swap) + synchronized bucket-level locks.',
+                'Fail-Fast (ConcurrentModificationException) vs Fail-Safe (CopyOnWriteArrayList).'
+              ]
+            },
+            {
+              id: 'java-streams',
+              title: 'Streams & Functional (Java 8)',
+              desc: 'Declarative pipelines: filter, map, flatMap, reduce, collect. Functional interfaces: Predicate, Function, Consumer, Supplier.',
+              points: [
+                'Intermediate (lazy evaluation) vs Terminal operations (eager execution).',
+                'Optional<T>: Use map(), orElseGet(), orElseThrow(). Never do .get() without .isPresent().',
+                'Difference between map() and flatMap() with 1-to-many nested lists.'
+              ]
+            },
+            {
+              id: 'java-multithreading',
+              title: 'Multithreading & JMM',
+              desc: 'Thread life-cycle, Synchronized, Volatile keyword, ThreadPoolExecutor, CompletableFuture.',
+              points: [
+                'Java Memory Model: Stack (primitive frames) vs Heap (Eden, Survivor, Tenured).',
+                'ThreadPoolExecutor params: corePoolSize, maxPoolSize, workQueue, RejectedExecutionHandler.',
+                'Volatile ensures visibility across CPU caches, but does NOT guarantee atomicity.'
+              ]
+            },
+            {
+              id: 'java-modern',
+              title: 'Modern Java (17 to 21)',
+              desc: 'Records (immutable DTOs), Sealed Classes (permits), Pattern Matching, Virtual Threads (Project Loom).',
+              points: [
+                'Records automatically generate constructor, getters, equals, hashCode, toString.',
+                'Virtual Threads (Java 21): Millions of lightweight user-mode threads solving blocking I/O overhead without reactive complexity.'
+              ]
+            }
+          ]
+        },
+        {
+          id: 'spring-framework',
+          title: 'Spring Boot & Microservices',
+          color: '#EF4444', // Red/Coral
+          icon: '🔴',
+          stage: 'Stage 1: Gatekeeper',
+          expanded: true,
+          children: [
+            {
+              id: 'spring-core',
+              title: 'Spring Core & IoC / DI',
+              desc: 'Inversion of Control container, Dependency Injection types, Bean Scopes (Singleton, Prototype).',
+              points: [
+                'Why Constructor Injection is superior to Field Injection (@Autowired): immutability, testability, no reflection cost.',
+                'Bean Lifecycle: Instantiation -> Populate -> Aware -> @PostConstruct -> Ready -> @PreDestroy.'
+              ]
+            },
+            {
+              id: 'spring-aop-tx',
+              title: 'Spring AOP & @Transactional',
+              desc: 'Aspect-Oriented Programming, dynamic CGLIB proxies, transaction propagation and rollbacks.',
+              points: [
+                '@Transactional rollback only happens on UNCHECKED exceptions (RuntimeException) by default. Use rollbackFor = Exception.class.',
+                'Self-invocation trap: Calling @Transactional from the same class bypasses the proxy, transaction silently does not start.'
+              ]
+            },
+            {
+              id: 'spring-web',
+              title: 'REST MVC & Exceptions',
+              desc: '@RestController, @RequestMapping, @RequestBody, Global Exception Handling.',
+              points: [
+                'Use @RestControllerAdvice + @ExceptionHandler for clean RFC 7807 problem details.',
+                'Stateless design: Proper HTTP status codes (200, 201, 400, 401, 403, 404, 500).'
+              ]
+            },
+            {
+              id: 'spring-security',
+              title: 'Spring Security & JWT',
+              desc: 'SecurityFilterChain, OncePerRequestFilter, Stateless Token validation.',
+              points: [
+                'Intercept request, extract Bearer token, validate signature & expiry, populate SecurityContextHolder.'
+              ]
+            }
+          ]
+        }
+      ],
+      right: [
+        {
+          id: 'standout-weapons',
+          title: 'Stage 2: Standout Weapons (Top 5%)',
+          color: '#8B5CF6', // Purple
+          icon: '⚡',
+          stage: 'Stage 2: Offer Winner',
+          expanded: true,
+          children: [
+            {
+              id: 'kafka-pubsub',
+              title: 'Apache Kafka & Event Streaming',
+              desc: 'Decoupled event pipeline: Topics, Partitions, Consumer Groups, Producer ACKs.',
+              points: [
+                'Talenlio Production Architecture: Google Pub/Sub push webhook -> Spring Boot -> Kafka EMAIL_TOPIC -> Async Consumer -> Gemini AI -> Firestore sync.',
+                'Ordering guarantee: Guaranteed only within a single partition, not across topics.',
+                'Producer: acks=all, enable.idempotence=true to prevent duplicate writes.'
+              ]
+            },
+            {
+              id: 'mongo-tuning',
+              title: 'MongoDB Query & Crash Tuning',
+              desc: 'Solving live production memory crashes and full collection scans.',
+              points: [
+                '100MB $facet Crash Fix: Split monolithic aggregation pipeline into two targeted queries (count query + paginated slice).',
+                'COLLSCAN Fix: Removed $toLower from query filters across 62,000+ candidate records; added stored lowercase index.',
+                'Data Modeling: Never store unbounded growing arrays inside a single document.'
+              ]
+            },
+            {
+              id: 'gemini-genai',
+              title: 'Production Gemini AI Integration',
+              desc: 'Google Gen-AI SDK in Spring Boot (GeminiAiService) for structured recruitment email classification.',
+              points: [
+                'Strict JSON Schema extraction using generateData(prompt, TargetClass.class).',
+                'Input truncation at 30k characters + stripping markdown fences (```json) before Jackson parsing.',
+                'Graceful fallback handling for API rate limits and timeouts.'
+              ]
+            }
+          ]
+        },
+        {
+          id: 'fullstack-arch',
+          title: 'Stage 3: Full-Stack & System Design',
+          color: '#3B82F6', // Blue
+          icon: '🌐',
+          stage: 'Stage 3: Deal Closer',
+          expanded: true,
+          children: [
+            {
+              id: 'angular-rxjs',
+              title: 'Angular & RxJS Reactive State',
+              desc: 'Standout & HireOS platforms, reactive observables, CDK overlays.',
+              points: [
+                'switchMap (cancels previous in-flight HTTP request on input change) vs mergeMap vs exhaustMap (ignores emissions while busy).',
+                'OnPush Change Detection: Drastically boosts performance by checking only on @Input changes or async pipe emissions.'
+              ]
+            },
+            {
+              id: 'cloud-storage',
+              title: 'Firestore Real-time & Redis Caching',
+              desc: 'Cloud NoSQL document models and sub-millisecond caching.',
+              points: [
+                'Firestore Snapshot Listeners: Instant Kanban card updates without manual polling.',
+                'Redis Cache-Aside Pattern: Check cache -> on miss query MongoDB -> populate Redis with TTL.'
+              ]
+            },
+            {
+              id: 'system-design',
+              title: 'System Design for 1-2 YOE',
+              desc: 'Rate Limiting (Token Bucket), Horizontal Scaling, Database Read Replicas, Microservice Communication (Sync vs Async).',
+              points: [
+                'CAP Theorem trade-offs in distributed systems.',
+                'Idempotent API design using unique client request IDs.'
+              ]
+            }
+          ]
+        },
+        {
+          id: 'interview-mastery',
+          title: 'Interview & Spoken Playbook',
+          color: '#F59E0B', // Amber
+          icon: '🎯',
+          stage: 'Communication',
+          expanded: true,
+          children: [
+            {
+              id: 'intro-script',
+              title: '90-Second Self-Introduction',
+              desc: 'The exact formula that positions you as an autonomous production software engineer.',
+              points: [
+                'Formula: Current Role at Talenlio -> Core Stack (Java/Spring Boot, Kafka, Gemini AI, Angular) -> Flagship Impact (Email Tracker & Mongo tuning) -> Alignment.'
+              ]
+            },
+            {
+              id: 'unknown-questions',
+              title: '4-Step Unknown Question Framework',
+              desc: 'How to tackle questions you do not immediately know without panic.',
+              points: [
+                '1. Pause & Clarify -> 2. Be transparent ("I haven\'t used X directly in production, but...") -> 3. Bridge to known experience ("...it solves a similar problem to Y which I used at Talenlio") -> 4. Reason from first principles.'
+              ]
+            },
+            {
+              id: 'screening-tactic',
+              title: 'Recruiter Phone Screen Tactics',
+              desc: 'Confidently stating experience, notice period, and compensation band (INR 10-16+ LPA).',
+              points: [
+                'State notice period clearly (e.g. 30 days / immediate negotiable).',
+                'Pitch your distributed systems & AI experience upfront to anchor higher salary brackets.'
+              ]
+            }
+          ]
+        }
+      ]
+    };
+
+    // LOCAL STORAGE MANAGER
+    const STORAGE_KEY = 'vaibhav_java_roadmap_progress_v1';
+    let userProgress = {};
+    let activeTopicId = null;
+    let currentView = 'tree';
+    let filterTodayOnly = false;
+
+    function loadProgress() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) userProgress = JSON.parse(raw);
+        else userProgress = {};
+      } catch (e) {
+        userProgress = {};
+      }
+      updateStats();
+    }
+
+    function saveProgress() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(userProgress));
+      } catch (e) {
+        console.error('Storage error:', e);
+      }
+      updateStats();
+    }
+
+    function getTopicRecord(id) {
+      if (!userProgress[id]) {
+        userProgress[id] = {
+          status: 'todo', // 'todo' | 'today' | 'done'
+          revisionCount: 0,
+          history: [],
+          notes: ''
+        };
+      }
+      return userProgress[id];
+    }
+
+    function updateStats() {
+      let total = 0;
+      let done = 0;
+      let today = 0;
+
+      const allBranches = [...ROADMAP_DATA.left, ...ROADMAP_DATA.right];
+      allBranches.forEach(b => {
+        if (b.children) {
+          b.children.forEach(c => {
+            total++;
+            const rec = userProgress[c.id];
+            if (rec) {
+              if (rec.status === 'done') done++;
+              if (rec.status === 'today') today++;
+            }
+          });
+        }
+      });
+
+      const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+      const bar = document.getElementById('top-progress-bar');
+      const text = document.getElementById('top-progress-text');
+      const todayCount = document.getElementById('today-count');
+
+      if (bar) bar.style.width = `${pct}%`;
+      if (text) text.innerText = `${done}/${total} Revised (${pct}%)`;
+      if (todayCount) todayCount.innerText = today;
+    }
+
+    // Switch between Tree and Cards view
+    function switchView(mode) {
+      currentView = mode;
+      const treeContainer = document.getElementById('tree-container');
+      const cardsContainer = document.getElementById('cards-container');
+
+      const allTreeBtns = [document.getElementById('mob-btn-tree'), document.getElementById('desk-btn-tree')];
+      const allListBtns = [document.getElementById('mob-btn-list'), document.getElementById('desk-btn-list')];
+
+      if (mode === 'tree') {
+        treeContainer.classList.remove('hidden');
+        cardsContainer.classList.add('hidden');
+
+        allTreeBtns.forEach(b => { if(b) { b.classList.add('bg-indigo-600', 'text-white'); b.classList.remove('text-slate-400'); } });
+        allListBtns.forEach(b => { if(b) { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('text-slate-400'); } });
+
+        requestAnimationFrame(() => {
+          renderTree();
+          resetView();
+        });
+      } else {
+        treeContainer.classList.add('hidden');
+        cardsContainer.classList.remove('hidden');
+
+        allListBtns.forEach(b => { if(b) { b.classList.add('bg-indigo-600', 'text-white'); b.classList.remove('text-slate-400'); } });
+        allTreeBtns.forEach(b => { if(b) { b.classList.remove('bg-indigo-600', 'text-white'); b.classList.add('text-slate-400'); } });
+
+        renderCards();
+      }
+    }
+
+    if (window.innerWidth < 768) {
+      currentView = 'list';
+    }
+
+    // Filter by Today's Target
+    function toggleTodayFilter() {
+      filterTodayOnly = !filterTodayOnly;
+      const btn = document.getElementById('btn-filter-today');
+      if (filterTodayOnly) {
+        btn.classList.add('bg-amber-500/20', 'border-amber-500/50', 'text-amber-300');
+        btn.classList.remove('bg-slate-800');
+      } else {
+        btn.classList.remove('bg-amber-500/20', 'border-amber-500/50');
+        btn.classList.add('bg-slate-800');
+      }
+
+      if (currentView === 'tree') renderTree();
+      else renderCards();
+    }
+
+    // Render Tree View
+    function renderTree() {
+      const leftCol = document.getElementById('left-column');
+      const rightCol = document.getElementById('right-column');
+      leftCol.innerHTML = '';
+      rightCol.innerHTML = '';
+
+      ROADMAP_DATA.left.forEach(branch => {
+        leftCol.appendChild(createBranchElement(branch, 'left'));
+      });
+
+      ROADMAP_DATA.right.forEach(branch => {
+        rightCol.appendChild(createBranchElement(branch, 'right'));
+      });
+
+      requestAnimationFrame(drawCurves);
+    }
+
+    function createBranchElement(branch, side) {
+      const branchContainer = document.createElement('div');
+      branchContainer.className = `flex flex-col ${side === 'left' ? 'items-end' : 'items-start'} gap-3`;
+      branchContainer.id = `branch-${branch.id}`;
+
+      // Parent Node
+      const parentPill = document.createElement('div');
+      parentPill.className = `node-pill flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border shadow-lg`;
+      parentPill.style.backgroundColor = `${branch.color}15`;
+      parentPill.style.borderColor = `${branch.color}50`;
+      parentPill.style.color = '#FFFFFF';
+
+      const childCount = branch.children ? branch.children.length : 0;
+      const toggleIcon = branch.expanded ? '▼' : (side === 'left' ? '◀' : '▶');
+
+      parentPill.innerHTML = `
+        <span class="text-sm">${branch.icon}</span>
+        <span>${branch.title}</span>
+        <span class="badge-count text-white font-mono" style="background-color: ${branch.color}40">${childCount}</span>
+        <span class="text-[9px] opacity-70 ml-1">${toggleIcon}</span>
+      `;
+
+      parentPill.onclick = (e) => {
+        e.stopPropagation();
+        branch.expanded = !branch.expanded;
+        renderTree();
+      };
+
+      branchContainer.appendChild(parentPill);
+
+      // Children list
+      if (branch.expanded && branch.children && branch.children.length > 0) {
+        const childrenContainer = document.createElement('div');
+        childrenContainer.className = `flex flex-col gap-2 ${side === 'left' ? 'items-end pr-3' : 'items-start pl-3'} transition-all`;
+
+        branch.children.forEach(child => {
+          const rec = getTopicRecord(child.id);
+
+          // If filtering today only, hide non-today items
+          if (filterTodayOnly && rec.status !== 'today') {
+            return;
+          }
+
+          const childPill = document.createElement('div');
+          childPill.className = `node-pill flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/70 text-slate-200 shadow-sm`;
+          childPill.id = `child-${child.id}`;
+
+          // Status indicator dot
+          let statusBadge = `<span class="w-1.5 h-1.5 rounded-full" style="background-color: ${branch.color}"></span>`;
+          if (rec.status === 'done') {
+            statusBadge = `<span class="text-[10px] text-emerald-400 font-bold">✓</span>`;
+          } else if (rec.status === 'today') {
+            statusBadge = `<span class="text-[10px] text-amber-400 animate-pulse">🎯</span>`;
+          }
+
+          childPill.innerHTML = `
+            ${statusBadge}
+            <span class="font-medium ${rec.status === 'done' ? 'line-through text-slate-400' : ''}">${child.title}</span>
+          `;
+
+          childPill.onclick = (e) => {
+            e.stopPropagation();
+            openDrawer(child, branch);
+          };
+
+          childrenContainer.appendChild(childPill);
+        });
+
+        branchContainer.appendChild(childrenContainer);
+      }
+
+      return branchContainer;
+    }
+
+    // Render Cards View (Mobile responsive)
+    function renderCards() {
+      const container = document.getElementById('cards-list');
+      container.innerHTML = '';
+
+      const allBranches = [...ROADMAP_DATA.left, ...ROADMAP_DATA.right];
+
+      allBranches.forEach(branch => {
+        const card = document.createElement('div');
+        card.className = "bg-slate-900 border border-slate-800 rounded-xl overflow-hidden shadow-lg";
+
+        const cardHeader = `
+          <div class="p-4 flex items-center justify-between cursor-pointer border-b border-slate-800/80 bg-slate-900/60" onclick="toggleCard('${branch.id}')">
+            <div class="flex items-center gap-2.5">
+              <span class="text-lg">${branch.icon}</span>
+              <div>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  ${branch.title}
+                  <span class="text-[10px] px-2 py-0.5 rounded font-medium" style="background: ${branch.color}20; color: ${branch.color}">
+                    ${branch.children ? branch.children.length : 0} topics
+                  </span>
+                </h3>
+                <span class="text-[10px] text-slate-400 font-mono">${branch.stage}</span>
+              </div>
+            </div>
+            <span id="card-arrow-${branch.id}" class="text-slate-400 text-xs">${branch.expanded ? '▲' : '▼'}</span>
+          </div>
+        `;
+
+        let childrenHtml = '';
+        if (branch.children) {
+          const visibleChildren = filterTodayOnly 
+            ? branch.children.filter(c => getTopicRecord(c.id).status === 'today')
+            : branch.children;
+
+          childrenHtml = `
+            <div id="card-body-${branch.id}" class="p-3 divide-y divide-slate-800/50 ${branch.expanded ? '' : 'hidden'}">
+              ${visibleChildren.length === 0 ? '<div class="py-2 text-center text-xs text-slate-500">No topics marked for today</div>' : ''}
+              ${visibleChildren.map(child => {
+                const rec = getTopicRecord(child.id);
+                let statusLabel = '<span class="text-[9px] text-slate-500 px-1.5 py-0.5 rounded bg-slate-800">To Do</span>';
+                if (rec.status === 'done') statusLabel = '<span class="text-[9px] text-emerald-400 px-1.5 py-0.5 rounded bg-emerald-500/10 font-bold">✓ Mastered</span>';
+                if (rec.status === 'today') statusLabel = '<span class="text-[9px] text-amber-300 px-1.5 py-0.5 rounded bg-amber-500/10 font-bold">🎯 Today</span>';
+
+                return `
+                  <div class="py-3 px-2 flex items-center justify-between hover:bg-slate-800/40 rounded-lg cursor-pointer transition" onclick='openDrawer(${JSON.stringify(child).replace(/'/g, "&apos;")}, ${JSON.stringify({title: branch.title, color: branch.color, stage: branch.stage}).replace(/'/g, "&apos;")})'>
+                    <div class="pr-3">
+                      <div class="flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full" style="background-color: ${branch.color}"></span>
+                        <h4 class="text-xs font-semibold ${rec.status === 'done' ? 'line-through text-slate-400' : 'text-slate-200'}">
+                          ${child.title}
+                        </h4>
+                        ${statusLabel}
+                      </div>
+                      <p class="text-[11px] text-slate-400 mt-0.5 line-clamp-1">${child.desc}</p>
+                    </div>
+                    <span class="text-[11px] text-indigo-400 shrink-0 font-medium">Notes &rarr;</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          `;
+        }
+
+        card.innerHTML = cardHeader + childrenHtml;
+        container.appendChild(card);
+      });
+    }
+
+    function toggleCard(branchId) {
+      const allBranches = [...ROADMAP_DATA.left, ...ROADMAP_DATA.right];
+      const target = allBranches.find(b => b.id === branchId);
+      if (target) {
+        target.expanded = !target.expanded;
+        renderCards();
+      }
+    }
+
+    // Draw Smooth Coggle-like Curves using SVG
+    function drawCurves() {
+      if (currentView !== 'tree') return;
+
+      const svg = document.getElementById('svg-layer');
+      const container = document.getElementById('tree-container');
+      const containerRect = container.getBoundingClientRect();
+      const centerHub = document.getElementById('center-hub');
+      if (!centerHub) return;
+      const hubRect = centerHub.getBoundingClientRect();
+
+      svg.innerHTML = '';
+      svg.setAttribute('width', container.scrollWidth);
+      svg.setAttribute('height', container.scrollHeight);
+
+      const hubCenterX = (hubRect.left - containerRect.left) + container.scrollLeft + (hubRect.width / 2);
+      const hubCenterY = (hubRect.top - containerRect.top) + container.scrollTop + (hubRect.height / 2);
+
+      ROADMAP_DATA.left.forEach(branch => {
+        const branchEl = document.getElementById(`branch-${branch.id}`);
+        if (!branchEl) return;
+        const pill = branchEl.firstElementChild;
+        const pillRect = pill.getBoundingClientRect();
+        
+        const pillRightX = (pillRect.right - containerRect.left) + container.scrollLeft;
+        const pillCenterY = (pillRect.top - containerRect.top) + container.scrollTop + (pillRect.height / 2);
+
+        drawBezier(hubCenterX - (hubRect.width / 2), hubCenterY, pillRightX, pillCenterY, branch.color, 2.5);
+
+        if (branch.expanded && branch.children) {
+          branch.children.forEach(child => {
+            const childEl = document.getElementById(`child-${child.id}`);
+            if (!childEl) return;
+            const childRect = childEl.getBoundingClientRect();
+            const childRightX = (childRect.right - containerRect.left) + container.scrollLeft;
+            const childCenterY = (childRect.top - containerRect.top) + container.scrollTop + (childRect.height / 2);
+
+            drawBezier(pillRect.left - containerRect.left + container.scrollLeft + 10, pillCenterY, childRightX, childCenterY, `${branch.color}70`, 1.5);
+          });
+        }
+      });
+
+      ROADMAP_DATA.right.forEach(branch => {
+        const branchEl = document.getElementById(`branch-${branch.id}`);
+        if (!branchEl) return;
+        const pill = branchEl.firstElementChild;
+        const pillRect = pill.getBoundingClientRect();
+        
+        const pillLeftX = (pillRect.left - containerRect.left) + container.scrollLeft;
+        const pillCenterY = (pillRect.top - containerRect.top) + container.scrollTop + (pillRect.height / 2);
+
+        drawBezier(hubCenterX + (hubRect.width / 2), hubCenterY, pillLeftX, pillCenterY, branch.color, 2.5);
+
+        if (branch.expanded && branch.children) {
+          branch.children.forEach(child => {
+            const childEl = document.getElementById(`child-${child.id}`);
+            if (!childEl) return;
+            const childRect = childEl.getBoundingClientRect();
+            const childLeftX = (childRect.left - containerRect.left) + container.scrollLeft;
+            const childCenterY = (childRect.top - containerRect.top) + container.scrollTop + (childRect.height / 2);
+
+            drawBezier(pillRect.right - containerRect.left + container.scrollLeft - 10, pillCenterY, childLeftX, childCenterY, `${branch.color}70`, 1.5);
+          });
+        }
+      });
+    }
+
+    function drawBezier(x1, y1, x2, y2, color, strokeWidth) {
+      const svg = document.getElementById('svg-layer');
+      const dx = (x2 - x1) * 0.55;
+      const d = `M ${x1} ${y1} C ${x1 + dx} ${y1}, ${x2 - dx} ${y2}, ${x2} ${y2}`;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', d);
+      path.setAttribute('stroke', color);
+      path.setAttribute('stroke-width', strokeWidth);
+      path.setAttribute('class', 'branch-path');
+      svg.appendChild(path);
+    }
+
+    // DRAWER & REVISION CONTROLS
+    function openDrawer(item, parentBranch) {
+      activeTopicId = item.id;
+      const drawer = document.getElementById('side-drawer');
+      const backdrop = document.getElementById('drawer-backdrop');
+      const rec = getTopicRecord(item.id);
+
+      document.getElementById('drawer-tag').innerText = parentBranch.title.toUpperCase();
+      document.getElementById('drawer-tag').style.color = parentBranch.color;
+      document.getElementById('drawer-tag').style.borderColor = `${parentBranch.color}40`;
+      document.getElementById('drawer-tag').style.backgroundColor = `${parentBranch.color}15`;
+
+      document.getElementById('drawer-stage').innerText = parentBranch.stage;
+      document.getElementById('drawer-title').innerText = item.title;
+      document.getElementById('drawer-subtitle').innerText = item.desc;
+
+      // Update Topic Status in Drawer
+      updateDrawerStatusUI(rec);
+
+      // Populate personal notes
+      document.getElementById('drawer-personal-notes').value = rec.notes || '';
+
+      // Populate technical content
+      const body = document.getElementById('drawer-body');
+      body.innerHTML = `
+        <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-sm">
+          <div class="text-[11px] font-bold text-amber-400 mb-2.5 flex items-center gap-1.5">
+            <span>💡</span> Interview Key Pointers & Mechanisms
+          </div>
+          <ul class="space-y-2.5">
+            ${item.points.map(pt => `
+              <li class="flex items-start gap-2">
+                <span class="text-indigo-400 mt-0.5">•</span>
+                <span class="text-slate-300 leading-relaxed">${pt}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+
+        <div class="bg-slate-800/40 p-3.5 rounded-xl border border-slate-700/60 text-slate-400 text-[11px] leading-relaxed">
+          <span class="font-semibold text-slate-200">How to frame in interviews:</span> Explain this as an architectural choice or production debugging scenario you worked on at Talenlio.
+        </div>
+      `;
+
+      backdrop.classList.remove('hidden');
+      drawer.classList.remove('translate-x-full');
+    }
+
+    function updateDrawerStatusUI(rec) {
+      const badge = document.getElementById('drawer-status-badge');
+      const btnTodo = document.getElementById('btn-status-todo');
+      const btnToday = document.getElementById('btn-status-today');
+      const btnDone = document.getElementById('btn-status-done');
+      const revCount = document.getElementById('drawer-revision-count');
+      const lastRev = document.getElementById('drawer-last-revised');
+
+      // Reset buttons style
+      [btnTodo, btnToday, btnDone].forEach(b => {
+        b.className = "py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-medium transition text-center";
+      });
+
+      if (rec.status === 'done') {
+        badge.innerText = '✓ Mastered';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30';
+        btnDone.className = "py-1.5 px-2 rounded-lg bg-emerald-600 text-white font-bold transition text-center shadow-md";
+      } else if (rec.status === 'today') {
+        badge.innerText = '🎯 Target for Today';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        btnToday.className = "py-1.5 px-2 rounded-lg bg-amber-500 text-slate-950 font-bold transition text-center shadow-md";
+      } else {
+        badge.innerText = 'To Do';
+        badge.className = 'text-[10px] px-2 py-0.5 rounded-full font-semibold bg-slate-800 text-slate-400 border border-slate-700';
+        btnTodo.className = "py-1.5 px-2 rounded-lg bg-slate-700 text-white font-bold transition text-center";
+      }
+
+      revCount.innerText = `Revised: ${rec.revisionCount || 0} times`;
+
+      if (rec.history && rec.history.length > 0) {
+        const lastEntry = rec.history[rec.history.length - 1];
+        lastRev.innerText = `Last revised: ${lastEntry}`;
+      } else {
+        lastRev.innerText = 'Last revised: Never';
+      }
+    }
+
+    function setTopicStatus(status) {
+      if (!activeTopicId) return;
+      const rec = getTopicRecord(activeTopicId);
+      rec.status = status;
+
+      if (status === 'done') {
+        rec.revisionCount = (rec.revisionCount || 0) + 1;
+        const nowStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        if (!rec.history) rec.history = [];
+        rec.history.push(nowStr);
+      }
+
+      saveProgress();
+      updateDrawerStatusUI(rec);
+
+      if (currentView === 'tree') renderTree();
+      else renderCards();
+    }
+
+    function markRevisedNow() {
+      if (!activeTopicId) return;
+      const rec = getTopicRecord(activeTopicId);
+      rec.revisionCount = (rec.revisionCount || 0) + 1;
+      rec.status = 'done';
+      const nowStr = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      if (!rec.history) rec.history = [];
+      rec.history.push(nowStr);
+
+      saveProgress();
+      updateDrawerStatusUI(rec);
+
+      if (currentView === 'tree') renderTree();
+      else renderCards();
+    }
+
+    function savePersonalNotes() {
+      if (!activeTopicId) return;
+      const text = document.getElementById('drawer-personal-notes').value;
+      const rec = getTopicRecord(activeTopicId);
+      rec.notes = text;
+      saveProgress();
+    }
+
+    function closeDrawer() {
+      const drawer = document.getElementById('side-drawer');
+      const backdrop = document.getElementById('drawer-backdrop');
+      drawer.classList.add('translate-x-full');
+      backdrop.classList.add('hidden');
+    }
+
+    // Revision History Modal
+    function openHistoryModal() {
+      const modal = document.getElementById('history-modal');
+      const list = document.getElementById('history-log-list');
+      list.innerHTML = '';
+
+      const logs = [];
+      const allBranches = [...ROADMAP_DATA.left, ...ROADMAP_DATA.right];
+      allBranches.forEach(b => {
+        if (b.children) {
+          b.children.forEach(c => {
+            const rec = userProgress[c.id];
+            if (rec && rec.history && rec.history.length > 0) {
+              rec.history.forEach(dateStr => {
+                logs.push({
+                  title: c.title,
+                  branch: b.title,
+                  date: dateStr,
+                  count: rec.revisionCount,
+                  notes: rec.notes
+                });
+              });
+            }
+          });
+        }
+      });
+
+      if (logs.length === 0) {
+        list.innerHTML = `
+          <div class="text-center py-8 text-slate-500">
+            <div class="text-2xl mb-2">📖</div>
+            <p>No revisions recorded yet.</p>
+            <p class="text-[11px] mt-1 text-slate-600">Click any topic and tap "Mark Revised Today" to build your study history.</p>
+          </div>
+        `;
+      } else {
+        // Reverse order (most recent first)
+        logs.reverse().forEach(log => {
+          const item = document.createElement('div');
+          item.className = "bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between";
+          item.innerHTML = `
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-slate-200 text-xs">${log.title}</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/10 text-indigo-400 font-mono">${log.branch}</span>
+              </div>
+              <div class="text-[10px] text-slate-500 mt-0.5 font-mono">Completed: ${log.date}</div>
+              ${log.notes ? `<div class="text-[11px] text-amber-300/80 mt-1 italic">"${log.notes}"</div>` : ''}
+            </div>
+            <span class="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">✓ Revised</span>
+          `;
+          list.appendChild(item);
+        });
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('history-modal').classList.add('hidden');
+    }
+
+    // Export & Import Progress
+    function exportProgress() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(userProgress, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `vaibhav_roadmap_progress_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importProgress(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          userProgress = JSON.parse(event.target.result);
+          saveProgress();
+          alert('Progress imported successfully!');
+          closeHistoryModal();
+          if (currentView === 'tree') renderTree();
+          else renderCards();
+        } catch (err) {
+          alert('Invalid JSON file format.');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Toolbar actions
+    function expandAll() {
+      ROADMAP_DATA.left.forEach(b => b.expanded = true);
+      ROADMAP_DATA.right.forEach(b => b.expanded = true);
+      if (currentView === 'tree') renderTree();
+      else renderCards();
+    }
+
+    function collapseAll() {
+      ROADMAP_DATA.left.forEach(b => b.expanded = false);
+      ROADMAP_DATA.right.forEach(b => b.expanded = false);
+      if (currentView === 'tree') renderTree();
+      else renderCards();
+    }
+
+    function resetView() {
+      expandAll();
+      const container = document.getElementById('tree-container');
+      container.scrollTo({
+        left: (container.scrollWidth - container.clientWidth) / 2,
+        top: (container.scrollHeight - container.clientHeight) / 2,
+        behavior: 'smooth'
+      });
+    }
+
+    // Search filter
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase().trim();
+      if (!q) {
+        if (currentView === 'tree') renderTree();
+        else renderCards();
+        return;
+      }
+
+      ROADMAP_DATA.left.forEach(b => {
+        const matchesParent = b.title.toLowerCase().includes(q);
+        const matchesChild = b.children && b.children.some(c => c.title.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q));
+        if (matchesParent || matchesChild) b.expanded = true;
+      });
+
+      ROADMAP_DATA.right.forEach(b => {
+        const matchesParent = b.title.toLowerCase().includes(q);
+        const matchesChild = b.children && b.children.some(c => c.title.toLowerCase().includes(q) || c.desc.toLowerCase().includes(q));
+        if (matchesParent || matchesChild) b.expanded = true;
+      });
+
+      if (currentView === 'tree') {
+        renderTree();
+        setTimeout(() => {
+          document.querySelectorAll('.node-pill').forEach(pill => {
+            if (pill.innerText.toLowerCase().includes(q)) {
+              pill.classList.add('ring-2', 'ring-amber-400', 'scale-105');
+            } else {
+              pill.classList.remove('ring-2', 'ring-amber-400', 'scale-105');
+            }
+          });
+        }, 50);
+      } else {
+        renderCards();
+      }
+    });
+
+    window.addEventListener('resize', () => {
+      if (currentView === 'tree') {
+        requestAnimationFrame(drawCurves);
+      }
+    });
+
+    window.onload = () => {
+      loadProgress();
+      if (window.innerWidth < 768) {
+        switchView('list');
+      } else {
+        switchView('tree');
+      }
+    };
+  </script>
+</body>
+</html>
