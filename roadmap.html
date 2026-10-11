@@ -28,21 +28,30 @@
     #tree-container {
       scrollbar-width: thin;
       -webkit-overflow-scrolling: touch;
+      cursor: grab;
+    }
+    #tree-container.is-dragging {
+      cursor: grabbing !important;
+      user-select: none;
+    }
+    #canvas-stage {
+      transform-origin: center center;
+      transition: transform 0.15s ease-out;
     }
     #side-drawer {
       transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
     }
-    /* Custom scrollbar */
+    /* Custom scrollbars */
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 7px;
+      height: 7px;
     }
     ::-webkit-scrollbar-track {
-      background: #090d16;
+      background: #030712;
     }
     ::-webkit-scrollbar-thumb {
       background: #1e293b;
-      border-radius: 3px;
+      border-radius: 4px;
     }
     ::-webkit-scrollbar-thumb:hover {
       background: #334155;
@@ -83,11 +92,11 @@
         </div>
       </div>
 
-      <!-- Controls, Filters & History -->
+      <!-- Controls, Filters & Navigation -->
       <div class="flex flex-wrap sm:flex-nowrap items-center gap-2">
         
         <!-- Search Input -->
-        <div class="relative flex-1 sm:w-48">
+        <div class="relative flex-1 sm:w-44">
           <input 
             id="search-input" 
             type="text" 
@@ -115,16 +124,23 @@
           <button id="desk-btn-list" onclick="switchView('list')" class="px-2.5 py-1 text-xs font-medium rounded-md text-slate-400 hover:text-white transition">Cards View</button>
         </div>
 
+        <!-- Zoom & Pan Controls -->
+        <div class="hidden sm:flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5 text-xs text-slate-300">
+          <button onclick="zoomOut()" title="Zoom Out" class="px-2 py-1 hover:bg-slate-800 rounded text-slate-300 font-bold">−</button>
+          <span id="zoom-text" onclick="zoomReset()" title="Click to Reset Zoom" class="px-2 py-1 font-mono text-[10px] text-slate-400 cursor-pointer hover:text-white">100%</span>
+          <button onclick="zoomIn()" title="Zoom In" class="px-2 py-1 hover:bg-slate-800 rounded text-slate-300 font-bold">+</button>
+        </div>
+
         <!-- Action Buttons -->
         <div class="flex items-center gap-1">
           <button onclick="expandAll()" title="Expand all branches" class="text-xs px-2 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition">
-            +
+            Expand All
           </button>
           <button onclick="collapseAll()" title="Collapse all branches" class="text-xs px-2 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition">
-            -
+            Collapse
           </button>
-          <button onclick="resetView()" title="Center view" class="text-xs px-2 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700/80 transition">
-            ⊙
+          <button onclick="resetView()" title="Center view" class="text-xs px-2.5 py-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-indigo-400 border border-slate-700/80 transition font-medium">
+            Center ⊙
           </button>
         </div>
 
@@ -132,46 +148,63 @@
     </div>
   </header>
 
-  <!-- Main Content Wrapper -->
+  <!-- Main Content Area -->
   <main class="flex-1 relative overflow-hidden flex">
 
-    <!-- 1. MIND MAP CANVAS VIEW -->
-    <div id="tree-container" class="flex-1 overflow-auto bg-slate-950 p-8 sm:p-16 relative flex items-center justify-center min-w-[1300px] min-h-[850px]">
-      <svg id="svg-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
+    <!-- 1. MIND MAP CANVAS VIEW (Smooth Pan & Unlimited Scroll) -->
+    <div id="tree-container" class="flex-1 w-full h-full overflow-auto bg-slate-950 relative">
       
-      <!-- Interactive Mind Map Root Layout -->
-      <div id="mindmap-root" class="relative z-10 flex items-center justify-center gap-20">
+      <!-- Spacious Virtual Canvas Wrapper (prevents any top/left clipping) -->
+      <div id="canvas-stage" class="relative min-w-[2600px] min-h-[1900px] flex items-center justify-center p-36">
         
-        <!-- Left Branches Column -->
-        <div class="flex flex-col gap-10 items-end" id="left-column">
-          <!-- Rendered via JS -->
-        </div>
+        <!-- SVG Connecting Curves Layer -->
+        <svg id="svg-layer" class="absolute inset-0 w-full h-full pointer-events-none z-0"></svg>
+        
+        <!-- Interactive Mind Map Tree Root -->
+        <div id="mindmap-root" class="relative z-10 flex items-center justify-center gap-24">
+          
+          <!-- Left Branches Column -->
+          <div class="flex flex-col gap-12 items-end" id="left-column">
+            <!-- Rendered via JS -->
+          </div>
 
-        <!-- Center Root Hub -->
-        <div class="flex flex-col items-center">
-          <div id="center-hub" class="node-pill bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 border-2 border-indigo-400/40 text-white p-5 rounded-2xl shadow-2xl shadow-indigo-500/30 text-center w-60">
-            <div class="text-2xl mb-1">🚀</div>
-            <div class="font-extrabold text-base tracking-tight text-white">JAVA FULL-STACK</div>
-            <div class="text-[11px] font-medium text-indigo-200">System Engineering</div>
-            <div class="mt-2 text-[10px] text-slate-400 bg-slate-900/70 px-2 py-0.5 rounded-full inline-block border border-slate-700/60">
-              Vaibhav Bhadane • 1+ YOE
+          <!-- Center Root Hub -->
+          <div class="flex flex-col items-center">
+            <div id="center-hub" class="node-pill bg-gradient-to-br from-indigo-600 via-indigo-700 to-slate-900 border-2 border-indigo-400/40 text-white p-5 rounded-2xl shadow-2xl shadow-indigo-500/30 text-center w-64">
+              <div class="text-2xl mb-1">🚀</div>
+              <div class="font-extrabold text-base tracking-tight text-white">JAVA FULL-STACK</div>
+              <div class="text-[11px] font-medium text-indigo-200">System Engineering</div>
+              <div class="mt-2 text-[10px] text-slate-400 bg-slate-900/70 px-2 py-0.5 rounded-full inline-block border border-slate-700/60">
+                Vaibhav Bhadane • 1+ YOE
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Right Branches Column -->
-        <div class="flex flex-col gap-10 items-start" id="right-column">
-          <!-- Rendered via JS -->
+          <!-- Right Branches Column -->
+          <div class="flex flex-col gap-12 items-start" id="right-column">
+            <!-- Rendered via JS -->
+          </div>
+
         </div>
 
       </div>
+
+      <!-- Quick Canvas Guide Tooltip in bottom corner -->
+      <div class="absolute bottom-4 left-4 z-20 hidden sm:flex items-center gap-2 bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-800 text-[11px] text-slate-400 pointer-events-none">
+        <span>🖱️ Drag to pan</span>
+        <span>•</span>
+        <span>Scroll to move</span>
+        <span>•</span>
+        <span>Click node to open</span>
+      </div>
+
     </div>
 
     <!-- 2. MOBILE-FIRST RESPONSIVE CARDS VIEW -->
     <div id="cards-container" class="hidden flex-1 overflow-y-auto bg-slate-950 p-4 sm:p-8 max-w-4xl mx-auto w-full space-y-6">
       <div class="text-center pb-2">
         <h2 class="text-base font-bold text-white">System Architecture & Daily Revision Roadmap</h2>
-        <p class="text-xs text-slate-400">Tap any topic to mark as revised, set as today's plan, or add personal notes</p>
+        <p class="text-xs text-slate-400">Mobile touch list • Tap any topic to mark revised, set as today's plan, or add personal notes</p>
       </div>
       <div id="cards-list" class="space-y-4">
         <!-- Rendered via JS -->
@@ -277,7 +310,6 @@
   <!-- HISTORY & REVISION LOG MODAL -->
   <div id="history-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-      <!-- Modal Header -->
       <div class="p-4 border-b border-slate-800 flex items-center justify-between">
         <div class="flex items-center gap-2">
           <span class="text-base">📅</span>
@@ -286,12 +318,10 @@
         <button onclick="closeHistoryModal()" class="text-slate-400 hover:text-white text-sm">✕</button>
       </div>
 
-      <!-- Modal Body -->
       <div id="history-log-list" class="p-4 overflow-y-auto space-y-2 text-xs flex-1">
         <!-- Injected via JS -->
       </div>
 
-      <!-- Modal Footer (Backup & Export) -->
       <div class="p-3 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between text-[11px]">
         <div class="flex items-center gap-2">
           <button onclick="exportProgress()" class="text-indigo-400 hover:underline">Export Backup (JSON)</button>
@@ -537,6 +567,7 @@
     let activeTopicId = null;
     let currentView = 'tree';
     let filterTodayOnly = false;
+    let currentZoom = 1;
 
     function loadProgress() {
       try {
@@ -561,7 +592,7 @@
     function getTopicRecord(id) {
       if (!userProgress[id]) {
         userProgress[id] = {
-          status: 'todo', // 'todo' | 'today' | 'done'
+          status: 'todo',
           revisionCount: 0,
           history: [],
           notes: ''
@@ -701,12 +732,11 @@
       // Children list
       if (branch.expanded && branch.children && branch.children.length > 0) {
         const childrenContainer = document.createElement('div');
-        childrenContainer.className = `flex flex-col gap-2 ${side === 'left' ? 'items-end pr-3' : 'items-start pl-3'} transition-all`;
+        childrenContainer.className = `flex flex-col gap-2.5 ${side === 'left' ? 'items-end pr-3' : 'items-start pl-3'} transition-all`;
 
         branch.children.forEach(child => {
           const rec = getTopicRecord(child.id);
 
-          // If filtering today only, hide non-today items
           if (filterTodayOnly && rec.status !== 'today') {
             return;
           }
@@ -715,7 +745,6 @@
           childPill.className = `node-pill flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/70 text-slate-200 shadow-sm`;
           childPill.id = `child-${child.id}`;
 
-          // Status indicator dot
           let statusBadge = `<span class="w-1.5 h-1.5 rounded-full" style="background-color: ${branch.color}"></span>`;
           if (rec.status === 'done') {
             statusBadge = `<span class="text-[10px] text-emerald-400 font-bold">✓</span>`;
@@ -820,23 +849,25 @@
       }
     }
 
-    // Draw Smooth Coggle-like Curves using SVG
+    // Draw Smooth Coggle-like Curves on Canvas Stage
     function drawCurves() {
       if (currentView !== 'tree') return;
 
       const svg = document.getElementById('svg-layer');
-      const container = document.getElementById('tree-container');
-      const containerRect = container.getBoundingClientRect();
+      const stage = document.getElementById('canvas-stage');
       const centerHub = document.getElementById('center-hub');
-      if (!centerHub) return;
+      if (!centerHub || !stage || !svg) return;
+
+      const stageRect = stage.getBoundingClientRect();
       const hubRect = centerHub.getBoundingClientRect();
 
       svg.innerHTML = '';
-      svg.setAttribute('width', container.scrollWidth);
-      svg.setAttribute('height', container.scrollHeight);
+      svg.setAttribute('width', stage.offsetWidth);
+      svg.setAttribute('height', stage.offsetHeight);
 
-      const hubCenterX = (hubRect.left - containerRect.left) + container.scrollLeft + (hubRect.width / 2);
-      const hubCenterY = (hubRect.top - containerRect.top) + container.scrollTop + (hubRect.height / 2);
+      // Coordinates relative to stage element
+      const hubCenterX = (hubRect.left - stageRect.left) + (hubRect.width / 2);
+      const hubCenterY = (hubRect.top - stageRect.top) + (hubRect.height / 2);
 
       ROADMAP_DATA.left.forEach(branch => {
         const branchEl = document.getElementById(`branch-${branch.id}`);
@@ -844,8 +875,8 @@
         const pill = branchEl.firstElementChild;
         const pillRect = pill.getBoundingClientRect();
         
-        const pillRightX = (pillRect.right - containerRect.left) + container.scrollLeft;
-        const pillCenterY = (pillRect.top - containerRect.top) + container.scrollTop + (pillRect.height / 2);
+        const pillRightX = (pillRect.right - stageRect.left);
+        const pillCenterY = (pillRect.top - stageRect.top) + (pillRect.height / 2);
 
         drawBezier(hubCenterX - (hubRect.width / 2), hubCenterY, pillRightX, pillCenterY, branch.color, 2.5);
 
@@ -854,10 +885,10 @@
             const childEl = document.getElementById(`child-${child.id}`);
             if (!childEl) return;
             const childRect = childEl.getBoundingClientRect();
-            const childRightX = (childRect.right - containerRect.left) + container.scrollLeft;
-            const childCenterY = (childRect.top - containerRect.top) + container.scrollTop + (childRect.height / 2);
+            const childRightX = (childRect.right - stageRect.left);
+            const childCenterY = (childRect.top - stageRect.top) + (childRect.height / 2);
 
-            drawBezier(pillRect.left - containerRect.left + container.scrollLeft + 10, pillCenterY, childRightX, childCenterY, `${branch.color}70`, 1.5);
+            drawBezier(pillRect.left - stageRect.left + 10, pillCenterY, childRightX, childCenterY, `${branch.color}70`, 1.5);
           });
         }
       });
@@ -868,8 +899,8 @@
         const pill = branchEl.firstElementChild;
         const pillRect = pill.getBoundingClientRect();
         
-        const pillLeftX = (pillRect.left - containerRect.left) + container.scrollLeft;
-        const pillCenterY = (pillRect.top - containerRect.top) + container.scrollTop + (pillRect.height / 2);
+        const pillLeftX = (pillRect.left - stageRect.left);
+        const pillCenterY = (pillRect.top - stageRect.top) + (pillRect.height / 2);
 
         drawBezier(hubCenterX + (hubRect.width / 2), hubCenterY, pillLeftX, pillCenterY, branch.color, 2.5);
 
@@ -878,10 +909,10 @@
             const childEl = document.getElementById(`child-${child.id}`);
             if (!childEl) return;
             const childRect = childEl.getBoundingClientRect();
-            const childLeftX = (childRect.left - containerRect.left) + container.scrollLeft;
-            const childCenterY = (childRect.top - containerRect.top) + container.scrollTop + (childRect.height / 2);
+            const childLeftX = (childRect.left - stageRect.left);
+            const childCenterY = (childRect.top - stageRect.top) + (childRect.height / 2);
 
-            drawBezier(pillRect.right - containerRect.left + container.scrollLeft - 10, pillCenterY, childLeftX, childCenterY, `${branch.color}70`, 1.5);
+            drawBezier(pillRect.right - stageRect.left - 10, pillCenterY, childLeftX, childCenterY, `${branch.color}70`, 1.5);
           });
         }
       });
@@ -900,6 +931,85 @@
       svg.appendChild(path);
     }
 
+    // Zoom Controls
+    function setZoom(val) {
+      currentZoom = Math.max(0.4, Math.min(1.6, val));
+      const stage = document.getElementById('canvas-stage');
+      stage.style.transform = `scale(${currentZoom})`;
+      document.getElementById('zoom-text').innerText = `${Math.round(currentZoom * 100)}%`;
+      requestAnimationFrame(drawCurves);
+    }
+
+    function zoomIn() { setZoom(currentZoom + 0.15); }
+    function zoomOut() { setZoom(currentZoom - 0.15); }
+    function zoomReset() { setZoom(1); resetView(); }
+
+    // Centering View on Center Hub
+    function resetView() {
+      expandAll();
+      const container = document.getElementById('tree-container');
+      const hub = document.getElementById('center-hub');
+      if (container && hub) {
+        const hubRect = hub.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        container.scrollLeft += (hubRect.left - containerRect.left) - (container.clientWidth - hubRect.width) / 2;
+        container.scrollTop += (hubRect.top - containerRect.top) - (container.clientHeight - hubRect.height) / 2;
+      }
+      requestAnimationFrame(drawCurves);
+    }
+
+    // Interactive Drag to Pan (Mouse & Touch)
+    function initDragToPan() {
+      const container = document.getElementById('tree-container');
+      let isDown = false;
+      let startX, startY, scrollLeft, scrollTop;
+
+      container.addEventListener('mousedown', (e) => {
+        // Prevent pan if clicking interactive pills, buttons or inputs
+        if (e.target.closest('.node-pill') || e.target.closest('button') || e.target.closest('input')) return;
+        isDown = true;
+        container.classList.add('is-dragging');
+        startX = e.pageX - container.offsetLeft;
+        startY = e.pageY - container.offsetTop;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (!isDown) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        const y = e.pageY - container.offsetTop;
+        container.scrollLeft = scrollLeft - (x - startX);
+        container.scrollTop = scrollTop - (y - startY);
+      });
+
+      window.addEventListener('mouseup', () => {
+        isDown = false;
+        container.classList.remove('is-dragging');
+      });
+
+      // Touch drag for mobile
+      let touchStartX, touchStartY;
+      container.addEventListener('touchstart', (e) => {
+        if (e.target.closest('.node-pill')) return;
+        const touch = e.touches[0];
+        touchStartX = touch.pageX - container.offsetLeft;
+        touchStartY = touch.pageY - container.offsetTop;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+      }, { passive: true });
+
+      container.addEventListener('touchmove', (e) => {
+        if (e.target.closest('.node-pill')) return;
+        const touch = e.touches[0];
+        const x = touch.pageX - container.offsetLeft;
+        const y = touch.pageY - container.offsetTop;
+        container.scrollLeft = scrollLeft - (x - touchStartX);
+        container.scrollTop = scrollTop - (y - touchStartY);
+      }, { passive: true });
+    }
+
     // DRAWER & REVISION CONTROLS
     function openDrawer(item, parentBranch) {
       activeTopicId = item.id;
@@ -916,13 +1026,9 @@
       document.getElementById('drawer-title').innerText = item.title;
       document.getElementById('drawer-subtitle').innerText = item.desc;
 
-      // Update Topic Status in Drawer
       updateDrawerStatusUI(rec);
-
-      // Populate personal notes
       document.getElementById('drawer-personal-notes').value = rec.notes || '';
 
-      // Populate technical content
       const body = document.getElementById('drawer-body');
       body.innerHTML = `
         <div class="bg-slate-950 p-4 rounded-xl border border-slate-800 shadow-sm">
@@ -956,7 +1062,6 @@
       const revCount = document.getElementById('drawer-revision-count');
       const lastRev = document.getElementById('drawer-last-revised');
 
-      // Reset buttons style
       [btnTodo, btnToday, btnDone].forEach(b => {
         b.className = "py-1.5 px-2 rounded-lg bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-400 font-medium transition text-center";
       });
@@ -1071,7 +1176,6 @@
           </div>
         `;
       } else {
-        // Reverse order (most recent first)
         logs.reverse().forEach(log => {
           const item = document.createElement('div');
           item.className = "bg-slate-950 p-3 rounded-xl border border-slate-800 flex items-center justify-between";
@@ -1142,16 +1246,6 @@
       else renderCards();
     }
 
-    function resetView() {
-      expandAll();
-      const container = document.getElementById('tree-container');
-      container.scrollTo({
-        left: (container.scrollWidth - container.clientWidth) / 2,
-        top: (container.scrollHeight - container.clientHeight) / 2,
-        behavior: 'smooth'
-      });
-    }
-
     // Search filter
     document.getElementById('search-input').addEventListener('input', (e) => {
       const q = e.target.value.toLowerCase().trim();
@@ -1197,10 +1291,12 @@
 
     window.onload = () => {
       loadProgress();
+      initDragToPan();
       if (window.innerWidth < 768) {
         switchView('list');
       } else {
         switchView('tree');
+        setTimeout(resetView, 100);
       }
     };
   </script>
